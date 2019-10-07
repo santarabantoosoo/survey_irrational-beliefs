@@ -1,0 +1,1791 @@
+---
+title: "survey_irrational-beliefs"
+output: word_document
+bibliography: library.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = NA,
+                      fig.height = 15, fig.width = 15)
+#this chunk is used to silence code, warnings, comments and hash from appearing in output
+```
+
+
+# Statistical analysis 
+
+
+Exploratory factor analysis, principal component analysis, alpha drop method and correlation coefficients were used to decide which questions shall better be removed from the score. Minimum residual factor analysis was the method chosen to determine number of domains and to group questions into specific domains. Cronbach alpha was calculated for all questions combined and separately for each domain. MANOVA followed by post-hoc analysis were then applied to check for significant differences across groups. R Foundation for Statistical Computing,Vienna, Austria version 3.5.2 was used for the statistical analysis. R packages used in the analysis were psych version 1.8.4 for factor analysis , HH version 3.1-35 for plotting likert data, factorMerger version 0.3.6 for merging factor levels and broom version 0.5.0 for tidying up model coefficients. 
+
+
+# Results
+
+
+
+```{r}
+
+# http://www.bwgriffin.com/gsu/courses/edur9131/content/Neill2008_WritingUpAFactorAnalysis.pdf 
+
+# use this link to write factor analysis 
+
+
+# https://www.r-bloggers.com/writing-manuscripts-in-rstudio-easy-citations/   for citation
+
+# to do.
+# 
+# Tidying bibliography files
+# When you are done writing, your bibliography file is likely to contain some unneeded references, which you added while writing but removed during revisions. tidy_bib_file() removes unneeded (or duplicate) entries from your bibliography file.
+
+# tidy_bib_file(
+#   rmd_file = "report.Rmd"
+#   , messy_bibliography = "references.bib"
+#   , file = "tidy_references.bib"
+# )
+options(scipen = 999)
+
+library(factorMerger) # for post-hoc analysis for MANOVA
+library(mvoutlier) # detecting multivariate outliers
+library(micompr) # for testing for normality and homogenity of variance in MANOVA
+library(mvnormtest)  # for shapiro test of normality for MANOVA
+library(table1)
+library(tidyverse)
+library(FactoMineR)
+library(factoextra)
+library(tibble)
+library(corpcor)
+library(GPArotation)
+library(psych)
+library(stargazer)
+library(broom)
+library(ggpubr)
+require(foreign)
+require(ggplot2)
+require(MASS)
+require(Hmisc)
+require(reshape2)
+library(knitr)
+library(HH) # for plotting likert data
+library(citr) # for citation
+library(flextable) # nice tables
+library(corrr) # for correlation matrix, a really nice package
+library(ICSNP)   # for hotelling test
+library(readxl)
+
+SurveyData <-read.csv("es_data.csv")
+
+# ------------------------- primary data checks --------------------------------
+## complete cases Questions
+completeSurveyData=SurveyData[complete.cases(SurveyData[2:62]), ]
+
+## complete cases all
+completeSurveyData=SurveyData[complete.cases(SurveyData), ]
+
+gov_total <- read.csv("CCHECancerRegistry-HamzaGovern_DATA_LABELS_2019-10-02_1455.csv")
+
+# correction for some MRNs mistyped 
+
+fir <- str_extract(SurveyData$MRN, "\\d{4}")   
+
+las <- substring(SurveyData$MRN, 5) 
+
+las <- str_pad(las, 4, pad = "0")
+
+SurveyData$MRN <- as.numeric(paste(fir,las, sep = ""))
+
+SurveyData$MRN[SurveyData$MRN == 201059530] <- 20154530
+
+SurveyData$MRN[SurveyData$MRN == 201444590] <- 20144590
+
+SurveyData$MRN[SurveyData$MRN == 20071040] <- 20070104
+
+SurveyData$MRN[SurveyData$MRN == 20800619] <- 20080619
+
+gov_total <- gov_total %>% 
+  dplyr::select(MRN, Governorate)
+
+SurveyData <- inner_join( SurveyData ,gov_total)
+
+#ff <- anti_join(ddd, gov_total )
+
+
+SurveyData$governorate[SurveyData$Governorate %in% c("Alexandria", "Behera", "Dakahlya", "Damietta", "Fayoum", "Gharbya", "Ismaeilya", "Kafr EL-Sheikh", "Matrouh", "Menoufya", "Port-Saeid",  "Sharkya", "Suez", "South Sinai", "Red Sea", "North Sinai")] <- "Lower Egypt, Red sea and Sinai"
+
+SurveyData$governorate[SurveyData$Governorate %in% c("Assyout", "Aswan", "Beny Swef", "Luxor", "Menia", "New Valley", "Qena", "Sohag", "Giza")] <- "Upper Egypt"
+
+SurveyData$governorate[SurveyData$Governorate %in% c("Cairo", "", "Qalyoubia")]  <- "Greater Cairo"
+
+SurveyData$governorate[SurveyData$Governorate %in% c("Outside Egypt")]  <- "Outside Egypt"
+
+
+#table(SurveyData$governorate)
+
+
+SurveyData$family_income_total = SurveyData$Father_month_salary + SurveyData$Mother_month_salary + SurveyData$other_income_val
+
+SurveyData <- filter(SurveyData, author != "other")
+
+#---------------- recode variables => salary, education ---------------------------
+## salary
+SurveyData$income_category =ifelse(
+  SurveyData$family_income_total <= 2000, " 1_less than 2000",
+  ifelse(SurveyData$family_income_total > 2000 & SurveyData$family_income_total <= 6000  ,"2_from 2000 to 6000",
+         ifelse(SurveyData$family_income_total > 6000 & SurveyData$family_income_total <= 12000  ,"3_from 6000 to 12000",
+                ifelse(SurveyData$family_income_total > 12000 & SurveyData$family_income_total <= 25000  ,"4_from 12000 to 25000",
+                       "5_more than 25000"
+                )
+         )
+  )
+)
+
+
+##education
+
+SurveyData$father_edu_recoded =ifelse(
+  SurveyData$father_edu == "Illiterate", " 1_Illiterate",
+  ifelse(SurveyData$father_edu == "read n write","2_read n write",
+         ifelse(SurveyData$father_edu == "primary","3_primary",
+                ifelse(SurveyData$father_edu =="prep","4_prep",
+                       ifelse(SurveyData$father_edu =="secondary +","4_secondary +",
+                              ifelse(SurveyData$father_edu =="University Degree","5_University Degree",
+                                     
+                                     "Master & PHD"
+                              )
+                       )
+                )
+         )
+  )
+)
+
+
+
+library(psych)
+library(GPArotation)
+
+# get the mean for all questions (before questions removal)
+
+questions <- SurveyData[, 2:62]
+
+# ---------------------------  combining categorical variables ---------------------------------
+
+# I will combine levels of income category
+
+
+SurveyData$income_category_comb <- SurveyData$income_category
+SurveyData$income_category_comb[SurveyData$income_category_comb == "5_more than 25000"] <- "4_from 12000 to 25000"
+SurveyData$income_category_comb[SurveyData$income_category_comb == "4_from 12000 to 25000"] <- "4_more than 12000"
+
+
+# Now we are having only 4 categories, the smallest contains 22 subjects 
+
+# I will combine father education levels 
+
+SurveyData$father_edu_comb <- SurveyData$father_edu_recoded
+SurveyData$father_edu_comb[SurveyData$father_edu_comb == "Master & PHD"] <- "5_University Degree"
+
+
+SurveyData$father_edu_combined <- as.factor(SurveyData$father_edu_comb)
+
+levels(SurveyData$father_edu_combined) <- c("Illiterate", "R&W_prim", "R&W_prim", "prep/sec", "prep/sec", "University Degree & post-grad")
+
+
+total_mean <- data.frame(cbind(SurveyData[, 1], rowMeans(questions), SurveyData$father_edu_combined, SurveyData$income_category_comb, SurveyData$sex))
+colnames(total_mean) <- c("ID", "Mean_score", "father_education", "income_category", "sex")
+
+SurveyData$mo_edu <- SurveyData$Mother_education
+
+SurveyData$mo_edu <- car::recode(SurveyData$mo_edu, "'Illiterate' = 1; c('read n write', 'primary') = 2; 
+  c('prep', 'secondary +') = 3; 'University Degree' = 4")
+
+
+SurveyData$fa_edu <- car::recode(SurveyData$father_edu_combined, "'Illiterate' = 1; 'R&W_prim' = 2; 'prep/sec' = 3; 'University Degree & post-grad' = 4")
+
+SurveyData$parent_education <- SurveyData$fa_edu
+
+SurveyData$parent_education[SurveyData$author == "mother"] <- SurveyData$mo_edu[SurveyData$author == "mother"]
+
+levels(SurveyData$parent_education) <- c("Illiterate", "R&W-PRIM", "PREP-SEC", "University")
+
+
+
+```
+
+We performed exploratory factor analysis (EFA) for the 61-item version of the questionnaire using data from the 950 participants. Apart from few missing data in demographics (table 1), nothing was missing regarding the survey answers to all questions. We calculated total family income by summing up father monthly salary, mother monthly salary as well as other incomes gained from other resources. We tried to categorize income and father education into meaningful categories, with an attempt to avoid small number of participants in subgroups so as to have valid statistical comparisons.  
+
+```{r}
+
+SurveyData$parent <- SurveyData$author
+
+levels(SurveyData$parent) <- c("father", "mother", "mother")
+
+SurveyData$Number_of_family_members <-  cut(SurveyData$family_members, c(-1, 4, 6, 100), c("<=4", "5-6", ">=7"))
+
+table1(~ sex +  governorate + parent + Number_of_family_members + parent_education + income_category_comb , data=SurveyData,  topclass="Rtable1-zebra")
+
+```
+
+Table1 Participants characteristics 
+
+Since questions are grouped into three domains; cognitive, behavioral and emotional, we applied confirmatory factor analysis. However, the model failed to converge. This raised two question; can we depend on the three domains for score calculation? and should we keep all questions?
+
+
+# Deciding which questions to remove
+
+We applied five methods to determine which questions to remove. The five methods are as follows: 
+
+1- Correlation coefficients with a cut-off of 0.3.[@DiscoveringStatisticsUsing2017] 
+
+
+```{r}  
+
+#-------------------------- look at correlation matrix for all questions----------
+
+all_q <- round(cor(questions),2)
+all_q[all_q == 1] <- 0  
+all_q <- data.frame(all_q)
+
+trial_all <- all_q %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(. < 0.3)) %>%
+  column_to_rownames('gene')
+
+
+all_low <- row.names(trial_all) 
+#all_low   
+```
+
+2- Alpha drop, where the overall cronbach alpha of all questions is checked after removal of a single question. Questions which, upon removal, increase the overall cronbach alpha are considered for removal from the score.
+
+
+```{r}
+
+reli <- psych::alpha(questions)
+rel_tot <- reli$total
+
+
+drop <- data.frame(reli$alpha.drop)
+drop <- cbind(row.names(drop), drop)
+drop <- arrange(drop, desc(raw_alpha))[, c(1,2)]
+drop <- drop %>% top_n(8)
+drop <- as.vector(drop[,1])
+
+#drop
+
+```
+
+3- Minimum residual exploratory factor analysis [@comreyMinimumResidualMethod1962], where questions that didn't load properly on any factor are suggested to be removed (based on the 0.3 criteria for factor loading). We have chosen Ordinary Least Squared/Minres factoring , as it is known to provide results similar to Maximum Likelihood without assuming multivariate normal distribution. In addition, it derives solutions through iterative eigen decomposition like principal axis. We have selected an oblique rotation "oblimin" as we believe that there is correlation in the factors.[@revelleOverviewPsychPackage]. We selected three factors based on scree plot inspection. These factors accounted for 23% of the variance.
+
+
+```{r}
+# Now that we've arrived at probable number of factors, let's start off with 3 as the number of factors. In order to perform factor analysis, we'll use psych package's `fa()function. Given below are the arguments we'll supply:
+
+threefactor <- fa(questions,nfactors = 3,rotate = "oblimin",fm="minres")
+
+
+#print(threefactor$loadings,cutoff = 0.3)
+
+# Now we need to consider the loadings more than 0.3 and not loading on more than one factor. Note that negative values are acceptable here. So let's first establish the cut off to improve visibility:
+
+# 15 questions are not significant.. however, there is no double loading
+ 
+
+# questions that need a second look
+# Q1,2,5,7,9,14 ,15,16,19, 25, 26, 27, 40, 52, 55
+
+# Next, we'll consider '4' factors:
+
+fourfactor <- fa(questions,nfactors = 4,rotate = "oblimin",fm="minres")
+#print(fourfactor$loadings,cutoff = 0.3)
+
+# 16 questions are not significant 
+
+fivefactor <- fa(questions,nfactors = 5,rotate = "oblimin",fm="minres")
+#print(fivefactor$loadings,cutoff = 0.3)
+
+# 15 questions are not significant
+
+#fa.diagram(threefactor)
+
+# due to the large number of factors, the graph is not clear 
+
+three <- threefactor$loadings    # I decided to use three factors, the choice is partly supported by PCA as will be presented below 
+
+
+three <- data.frame(unclass(three))
+
+three_0.3 <- three %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(. < 0.3)) %>%
+  column_to_rownames('gene')
+three_out <- row.names(three_0.3)
+#three_out
+
+```
+
+Since the variance explained was too small, we extracted four- and five-factor solutions as well. However, these solutions improved the percentage of variance explained only slightly. Thus, we decided to stick to the three factor method. Broadly speaking, the pattern matrix in general contained moderate loadings on each factor with almost no cross-loadings. Specifically, loadings for each factor ranged from 0.3 (the predefined cut-off) to `r max(three)` 
+
+
+4- Factor analysis using maximum likelihood method, where questions are suggested to be removed if they load poorly on factors( based on 0.3 criteria)
+
+5 - principal component analysis (again based on 0.3 criteria) 
+
+In order for a question to be removed, three criteria should be fulfilled. First, the question should be extracted by at least three out of the five methods. Second, one of the methods should be minimum residual factor analysis, since we consider it as the most accurate method. Last, the principal investigator have to approve question removal. 
+
+
+It is worth noting that we couldn't find specific guidelines or criteria to remove questions based upon. That's why we are adopting our own criteria, trying to reach a valid statistical decision in concordance with principal investigator's opinion.    
+
+```{r}
+# -------------------- Factor Analysis Model Adequacy -----------------------------
+
+ #summary(threefactor)
+
+# The root mean square of the residuals (RMSR) is  0.04 
+# This is acceptable as this value should be close to 0.
+
+# RMSEA index =  0.037  
+# This value shows good model fit as it's below 0.05
+
+# Finally, the Tucker-Lewis Index (TLI) is 0.811 - a somewhat low value considering it's less than 0.9  
+
+
+# ------------------------------ PCA -------------------   
+
+res.pca = PCA(questions, scale.unit=TRUE, ncp = 5, graph=F)
+
+# I kept the default = 5, because I think starting from this number, the fraction sum up to 1
+
+#fviz_screeplot(res.pca, addlabels = TRUE, ylim = c(0, 20))
+# This supports using 2 or 3 factors
+
+
+```
+
+
+
+```{r}
+var <- get_pca_var(res.pca)
+
+# question to consider removing
+pca_1 <- data.frame(var$coord)
+
+
+q_remove_0.35 <- pca_1 %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(. < 0.35)) %>%
+  column_to_rownames('gene')
+# row.names(q_remove_0.35)
+# here we mention the questions that have loadings less than 0.35 
+
+q_remove_0.3 <- pca_1 %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(. < 0.3)) %>%
+  column_to_rownames('gene')
+pca_0.3 <- row.names(q_remove_0.3)   # here we select the questions with loadings less than 0.3 
+
+```
+
+
+```{r}
+#pca_0.3
+```
+
+
+```{r}
+
+# ------------- another PCA trial from ANDY ----------------------   
+
+# when conducting principal components analysis we begin by
+# establishing the linear variates within the data and then decide how many of these variates
+# to retain (or 'extract'). Therefore, our starting point is to create a principal components
+# model that has the same number of factors as there are variables in the data: by doing this
+# we are just reducing the data set down to its underlying factors.
+
+# # there is some evidence that it is accurate when the number of variables is less than
+# 30 and the resulting communalities (after extraction) are all greater than .7. Kaiser's
+# criterion can also be accurate when the sample size exceeds 250 and the average communality
+# is greater than or equal to .6. In any other circumstances you are best advised
+# to use a scree plot provided the sample size is greater than 200
+
+# we dont meet these requirments here ... This is another indication that we should reduce the number of variables that we have.  
+
+pc1 <-  principal(questions, nfactors = length(questions), rotate = "none")
+#plot(pc1$values, type = "b")    # here the 3 factors idea is supported
+
+pc2 <-  principal(questions, nfactors = 3, rotate = "none")
+
+# -----------------------------    factor analysis with stats package ----------------------
+
+# It is based on maximum likelihood
+
+bas <- factanal(questions, 3)    # I depended on pervious insights to select 3 as the number of factors 
+bas <- data.frame(unclass(bas$loadings))
+
+fact_anal <- bas %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(. < 0.3)) %>%
+  column_to_rownames('gene')
+f_anal <- row.names(fact_anal)
+```
+
+
+
+```{r}
+#f_anal
+
+```
+
+
+
+```{r}
+# _______________________________ deciding which questions to remove _____________________________
+
+#three_out # factor analysis from psych package
+#f_anal   # through maximum likelihovod x
+#pca_0.3   # pca 
+  # 8 questions with the highest cronbach alpha rise upon removal 
+
+myList <- list(three_out, f_anal, pca_0.3, drop, all_low)
+
+myList <- unlist(myList) # I think we should get the 5s, 4s and 3s
+
+#table(myList)
+```
+
+
+According to the previously mentioned criteria, we removed seven questions, leaving a total of 54 questions.
+
+
+```{r}
+#   _________________ repeating analysis after removal of questions _______________________
+
+# excluded 1, 2,  7,  15,25, 40,52 
+
+questions <- SurveyData[, 2:62]
+
+questions <- questions[, -c(1, 2, 7, 15, 25, 40, 52)]
+
+total_mean <- data.frame(cbind(SurveyData[, 1], rowMeans(questions), SurveyData$father_edu_combined, SurveyData$income_category_comb, SurveyData$sex))
+
+colnames(total_mean) <- c("ID", "Mean_score", "father_education", "income_category", "sex")
+
+#head(total_mean, 10)
+```
+
+```{r}
+# https://rpubs.com/Pun_/Exploratory_factor_Analysis 
+
+parallel<-fa.parallel(questions, fm='minres', fa='fa')
+```
+
+Scree-plot from minimum residual factor analysis 
+
+```{r}
+fviz_screeplot(res.pca, addlabels = TRUE, ylim = c(0, 20))
+# This supports using 2 or 3 factors
+```
+
+Scree-plot from Principle Component Analysis
+
+
+Based on the scree-plots and the principle investigator's choice, we have chosen to group questions into three domains. We used the minimum residual factor analysis method to group questions into their corresponding domains according to factor loading. Grouping of questions was different from the principal investigator's initial domains grouping (cognitive, behavioral and emotional). This led us to formulate three novel domains; Demand, fear and Accuse. Each one of the novel domains contains questions that belongs to the three initial domains. 
+
+~~The first factor, Guilt and Worry, consisted of items pertaining to parents' concerns about their children's current and future well-being (e.g., I worry that my child's illness will worsen/return; I wake up during the night and check on my child.) as well as personal guilt (e.g., I worry that I may be responsible for my child's illness in some way.).~~
+
+
+```{r}
+
+### (((figure x to be included shows the interaction between the initial and novel domains)))
+```
+
+~~The items associated with each factor are listed in
+Table II along with the corresponding factor loadings,
+eigenvalues, and percent of variance explained. For
+subsequent analyses, scores for each factor were calculated
+by adding the item responses and dividing by the
+number of items on each factor (see Table III for scale
+descriptives~~
+
+
+### Internal Consistency
+
+
+We then applied cronbach alpha for testing reliability of questions for each domain separately. Alpha is good for the first two domains; demand and bear. For Accuse domain, alpha is acceptable.
+
+
+
+```{r}
+# --------------------- analysis per cluster -----------------------------
+
+target1 = c(
+ 9, 24, 28, 29, 31, 33, 34, 35, 36, 37, 39, 42, 44, 54, 56, 57, 58
+) + 1 ## +1 coz ID col
+
+factor_1_q = c(1, target1)
+
+factor1 <- SurveyData[,factor_1_q]
+
+factor1$rowMean <-rowMeans(factor1[,2:ncol(factor1)])  
+
+# 16 questions
+
+target2 = c(
+  5, 14, 17, 21, 23, 27, 30, 32, 38, 41, 43, 45, 46, 47, 51, 53, 59, 60, 61, 48, 49, 50 # last 3 questions are transfered from domain 1
+) + 1 ## +1 coz ID col
+factor_2_q = c(1, target2)
+
+factor2 <- SurveyData[,factor_2_q]
+
+factor2$rowMean <-rowMeans(factor2[,2:ncol(factor2)])  
+
+# 22 questions
+
+target3 = c(
+  3, 8, 11, 12, 18, 20, 22, 26, 4, 6, 10, 13, 16, 19, 55) + 1
+factor_3_q = c(1,target3) ## +1 coz ID col
+
+factor3 <- SurveyData[,factor_3_q]
+
+factor3$rowMean <-rowMeans(factor3[,2:ncol(factor3)])  
+# 16 questions 
+
+### add means to the original file, however, this is the mean after removing the questions
+
+SurveyData$factor1_Mean <-rowMeans(SurveyData[,target1])
+SurveyData$factor1_Sum <-rowSums(SurveyData[,target1])
+SurveyData$factor2_Mean <-rowMeans(SurveyData[,target2])
+SurveyData$factor2_Sum <-rowSums(SurveyData[,target2])
+SurveyData$factor3_Mean <-rowMeans(SurveyData[,target3])
+SurveyData$factor3_Sum <-rowSums(SurveyData[,target3])
+
+
+SurveyData$demand <- SurveyData$factor1_Mean
+SurveyData$bear <- SurveyData$factor2_Mean
+SurveyData$accuse <- SurveyData$factor3_Mean
+
+SurveyData$demand_sum <- SurveyData$factor1_Sum
+SurveyData$bear_sum <- SurveyData$factor2_Sum
+SurveyData$accuse_sum <- SurveyData$factor3_Sum
+
+
+demand_factor<-data.matrix(factor1[,-c(1,ncol(factor1))], rownames.force = NA)
+bear_factor<-data.matrix(factor2[,-c(1,ncol(factor2))], rownames.force = NA)
+accuse_factor<-data.matrix(factor3[,-c(1,ncol(factor3))], rownames.force = NA)
+
+
+cor_demand_factor = round(cor(demand_factor),2)
+trial <- cor_demand_factor
+trial[trial == 1] <- 0
+trial <- data.frame(trial)
+
+#max(trial) ## note that the maximum correlation in this factor is 0.45
+
+trial <- trial %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(. < 0.3)) %>%
+  column_to_rownames('gene')
+demand_low <- row.names(trial)
+
+# I have found here 1 out of 17 items less than 0.3 
+
+
+cor_bear_factor = round(cor(bear_factor),2)
+trial <- cor_bear_factor
+trial[trial == 1] <- 0
+trial <- data.frame(trial)
+
+#max(trial) ## note that the maximum correlation in this factor is 0.46
+
+trial <- trial %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(. < 0.3)) %>%
+  column_to_rownames('gene')
+bear_low <- row.names(trial)
+
+# I have found here 10 out of 22 items less than 0.3 
+
+
+cor_accuse_factor = round(cor(accuse_factor),2)
+trial <- cor_accuse_factor
+trial[trial == 1] <- 0
+trial <- data.frame(trial)
+
+#max(trial) ## note that the maximum correlation in this factor is 0.41
+
+trial <- trial %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(. < 0.3)) %>%
+  column_to_rownames('gene')
+accuse_low <- row.names(trial)
+# I have found here 7 out of 15 items less than 0.3 
+
+```
+
+
+
+![](cronbach.png)
+
+
+```{r}
+a_total <- alpha(questions)
+c_t <- a_total$total[1:2]
+
+```
+
+
+```{r}
+
+a_dem <- alpha(demand_factor)
+
+c_1 <- a_dem$total[1:2]
+
+
+```
+
+
+
+```{r}
+a_bear <- alpha(bear_factor)
+c_2 <- a_bear$total[1:2]
+
+```
+
+
+
+
+```{r}
+
+
+a_accuse <- alpha(accuse_factor)
+
+c_3 <- a_accuse$total[1:2]
+
+Domains <- c("Demand", "Bear", "Accuse")
+
+rmdtable <- function(df){
+ 
+  bes <- autofit(theme_vanilla(flextable(head(df))))
+
+bes <- bg(bes, bg = "blue", part = "header")
+bes <- color(bes, color = "white", part = "header")
+
+#bes <- color(bes, i = ~ col < 0.05, j = ~ col, color = "red")
+
+return(bes) 
+}
+
+c_alpha <- cbind(Domains, rbind(c_1, c_2, c_3))
+
+
+desc_data <- SurveyData %>% 
+  dplyr::select(demand, bear, accuse) %>%
+    summarise_all(c(mean = mean,
+                    sd = sd,
+                    min = min,
+                    max = max
+                    #median = interp(~median(var, na.rm = T), var = as.name(field)))
+                    ))
+
+dsc_d <- as.matrix(rbind(desc_data[,c(1,4,7,10)]))
+
+dsc_b <- as.matrix(rbind(desc_data[,c(2,5,8,11)]))
+
+dsc_a <- as.matrix(rbind(desc_data[,c(3,6,9,12)]))
+
+dsc <- data.frame(rbind(dsc_d, dsc_b, dsc_a))
+
+colnames(dsc) <- c("Mean", "SD", "Min", "Max")
+
+rmdtable(cbind(c_alpha, dsc))
+
+foo <- SurveyData %>% 
+  dplyr::select(demand, bear, accuse)
+
+library(funModeling)
+
+#plot_num(foo)
+#rmdtable(profiling_num(foo))
+```
+
+
+Table  Descriptive Statistics and Internal Consistency of the irrational believes scale
+
+
+
+Next, we investigated whether there are correlations between the three domains. As expected, the three factors were inter correlated. Specifically, the bear factors was moderately and positively inter correlated with both demand and accuse factors (r ranged from .53 through .65; see Table).
+
+```{r}
+
+# correlation matrix
+
+cor_data <- SurveyData %>% 
+  dplyr::select(demand, bear, accuse)
+res.cor <- correlate(cor_data) %>% 
+  shave()
+
+colnames(res.cor)[1] <- "Domain"
+
+rmdtable(res.cor)
+
+```
+
+Table  Pearson Correlations Between domains of irrational believes scale. 
+
+
+
+
+```{r}
+
+# General interpretation
+
+#Although very popular, Cronbach's alpha (1951) underestimates the reliability of a test and over estimates the first factor saturation.
+
+# alpha (Cronbach, 1951) is the same as Guttman's lambda3 (Guttman, 1945)
+
+#Perhaps because it is so easy to calculate and is available in most commercial programs, alpha is without doubt the most frequently reported measure of internal consistency reliability. Alpha is the mean of all possible split half reliabilities (corrected for test length). For a unifactorial test, it is a reasonable estimate of the first factor saturation, although if the test has any microstructure (i.e., if it is "lumpy") coefficients beta (Revelle, 1979; see ICLUST) and omega_hierchical (see omega) are more appropriate estimates of the general factor saturation. omega_total (see omega) is a better estimate of the reliability of the total test.
+
+# Guttman's Lambda 6 (G6) considers the amount of variance in each item that can be accounted for the linear regression of all of the other items (the squared multiple correlation or smc), or more precisely, the variance of the errors
+
+# The squared multiple correlation is a lower bound for the item communality and as the number of items increases, becomes a better estimate.
+
+
+# thus we will apply omega test 
+# however, since we will not depend on the clusters formed by factor analysis and we will depend on the investigators clusters, we will focus only on omega total 
+#ome <- omega(cognitive_factor, plot = F)
+
+#om_cog <- as.data.frame(ome$omega.tot )
+#colnames(om_cog) <- "omega total"
+#om_cog
+
+# omega total is relatively high
+
+
+#ome <- omega(emotional_factor, plot = F)
+
+#om_emot <- as.data.frame(ome$omega.tot )
+#colnames(om_emot) <- "omega total"
+#om_emot
+# omega total is relatively high
+
+
+#ome <- omega(behavioural_factor, plot = F)
+
+#om_bhv <- as.data.frame(ome$omega.tot )
+#colnames(om_bhv) <- "omega total"
+#om_bhv
+# omega total is relatively high
+
+```
+
+# Supplementary figures 
+
+### likert plot for demand factor
+
+```{r fig.height= 15, fig.width= 15}
+#https://cran.r-project.org/web/packages/HH/HH.pdf
+
+lkrt_plot <- function(factor, name){
+  
+  fct <- data.frame(cbind(SurveyData[1], factor ))
+  
+  fct <- gather(fct, "question", "response", -ID)
+  
+  g <- fct %>% group_by(question, response) %>% 
+    summarise(n = n()) %>% 
+    arrange(response)
+  
+  g <- reshape2::melt(g, id.vars=c("question", "response"))
+  names(g)[3] <- "Agreement"
+  
+  g$response <- as.factor(g$response)
+  
+  levels(g$response) <- c("never", "sometimes", "common")
+  
+  return(likert(question ~ response , value="value", data=g,
+         main = name,
+         as.percent = T,
+         ylab=NULL,
+         scales=list(y=list(relation="free")), layout=c(1,2)))
+  
+  
+}
+
+# likert plot for cognitive factor 
+  
+lkrt_plot(demand_factor, "Demand factor")  
+
+```
+
+### likert plot for Bear factor 
+
+```{r fig.height= 15, fig.width= 15}
+lkrt_plot(bear_factor, "Bear factor")  
+```
+
+
+### likert plot for Accuse factor 
+
+```{r fig.height= 15, fig.width= 15}
+lkrt_plot(accuse_factor, "Accuse factor")  
+
+```
+
+
+```{r}
+#  ------------------------------------KW ------------------------
+krus <- function(cog, emot, bhv, four, risk){
+
+  a <- kruskal.test(cog ~ as.factor(risk) )
+  
+  b <- kruskal.test(emot ~ as.factor(risk )) 
+  
+  c <- kruskal.test(bhv ~ as.factor(risk) )
+  
+  d <- kruskal.test(four ~ as.factor(risk) )
+  
+  krsk <- rbind(tidy(a), tidy(b), tidy(c), tidy(d))
+  krsk <- cbind(c("demand", "bear", "accuse", "exaggerate"), krsk)
+  krsk <- krsk[, c(1,2,3,5)]
+  return(krsk)
+}
+
+krus_total <- function(total, risk){
+  
+  krsk <- kruskal.test(total ~ as.factor(risk) )
+  krsk <- tidy(krsk)
+  #krsk <- cbind(c("total score"), krsk)
+  #krsk <- krsk[, c(1,2,3,5)]
+  return(krsk)
+}
+# ------------------------- kruskal wallis analysis ----------------------------
+
+# --------------all three dimensions combined ( with income and education levels combined) -----------
+
+#krus_total(total_mean$Mean_score, risk = total_mean$sex)
+
+# kruskal wallis for total is significant for sex 
+
+
+#krus_total(total_mean$Mean_score, risk = total_mean$income_category)
+
+# kruskal wallis for total is not significant for combined income category 
+
+
+#krus_total(total_mean$Mean_score, risk = total_mean$father_education)
+
+  # kruskal wallis for total is significant for combined father education
+
+
+
+#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$sex)
+
+# emotional and behavioral factors are significant for sex. 
+
+
+#krus(SurveyData$cognitive_dim, SurveyData$emotional_dim, SurveyData$behaviour_dim, SurveyData$sex)
+
+# to confirm: when the mean is used instead of the sum, the same results are evident
+
+# the same exact values when the mean is used. This definetely makes sense. It is all about scaling
+
+
+#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$income_category)
+
+# only the emotional factor is significant for income category 
+
+
+#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$father_edu_recoded)
+
+# all are highly significant 
+
+
+# testing the income after combining 
+#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$income_category_comb)
+
+#again only the emotional factor is significant 
+
+
+# testing the education after combining 
+#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$father_edu_comb)
+
+#again all the factors are significant 
+
+### combining father education again
+
+# krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$father_edu_combined)
+# # again all the factors are highly significant 
+# 
+# # -----------------------   post-hoc analysis -----------------------------------
+# 
+# library(dunn.test)
+# 
+# # testing the father education variable 
+# 
+# dunn.test(as.numeric(total_mean$Mean_score) , as.factor(total_mean$income_category),
+#           kw=T, method="bonferroni")  
+# # nothing is significant, despite the fact that it was significant in kruskal wallis and ANOVA
+# 
+# dunn.test(SurveyData$cognitive_dim_sum , as.factor(SurveyData$father_edu_combined ),
+#           kw=T, method="bonferroni")  
+# 
+# # only the significant value is for university degree in relation to prep/sec degree
+# 
+# dunn.test(SurveyData$emotional_dim_sum , as.factor(SurveyData$father_edu_combined ),
+#           kw=T, method="bonferroni")
+# 
+# # again only the significant value is for university degree in relation to prep/sec degree
+# dunn.test(SurveyData$behaviour_dim_sum , as.factor(SurveyData$father_edu_combined),
+#           kw=T, method="bonferroni")
+# 
+# # again  the significant value is for university degree in relation to prep/sec degree
+# # however, here the significant value is also evident for university in comparison to illiterate 
+# 
+# 
+# # testing income category 
+# 
+# dunn.test(SurveyData$emotional_dim_sum , as.factor(SurveyData$income_category_comb ),
+#           kw=T, method="bonferroni")
+
+# again only the significant value is for (more than 12K) in relation to (less than 2K)
+```
+
+
+We checked whether irrational believes scores vary according to parent or child factors. We applied multivariate analysis of variance instead of univariate ANOVA or t-test to avoid family-wise error rate(alpha inflation). In addition, this enables us to preserve power since scale scores are correlated. 
+
+
+```{r}
+
+
+# We measured effect of sex, income and father education on total score as well as domain score. Parametric tests (i.e. ANOVA and t-test) in general should be used with caution with ordinal data like the likert scale we are dealing with, as assumptions maybe violated. However, with the large sample size (around 1000 in our case), normality is never a problem. Moreover, testing for the heterogenity of variance proved that the assumption was not violated. Thus, we applied ANOVA for income and father education and t-test for sex, according to the reference. [click to view reference](https://www.st-andrews.ac.uk/media/capod/students/mathssupport/OrdinalexampleR.pdf)
+
+# aov_tot_inc <- aov(as.numeric(total_mean$Mean_score) ~ total_mean$income_category, data = total_mean)
+# 
+# aov_tot_inc <- tidy(aov_tot_inc)   
+# 
+# ```
+# 
+# 
+# ```{r}
+# dat.clean<- na.omit(subset(SurveyData, select = c(demand, bear, accuse,  income_category_comb, sex, father_edu_combined)))
+# 
+# # ggboxplot(dat.clean, x = "income_category_comb", y = "demand", 
+# #           color = "income_category_comb",
+# #           ylab = "Mean score", xlab = "Income category")
+# 
+# 
+# # ggline(dat.clean, x = "income_category_comb", y = "demand", 
+# #        add = c("mean_se", "jitter"), 
+# #        ylab = "Demand", xlab = "income_category")
+# 
+# aov_dem_inc <- aov(demand ~ income_category_comb, data = dat.clean)
+# # It is stated in the model that Estimated effects may be unbalanced 
+# aov_dem_inc <- tidy(aov_dem_inc)
+
+```
+
+
+```{r}
+# # ggboxplot(dat.clean, x = "income_category_comb", y = "bear", 
+# #           color = "income_category_comb",
+# #           ylab = "Mean score", xlab = "Income category")
+# # 
+# # 
+# # ggline(dat.clean, x = "income_category_comb", y = "bear", 
+# #        add = c("mean_se", "jitter"), 
+# #        ylab = "Bear", xlab = "income_category")
+# 
+# aov_bear_inc <- aov(bear ~ income_category_comb, data = dat.clean)
+# # It is stated in the model that Estimated effects may be unbalanced 
+# aov_bear_inc <- tidy(aov_bear_inc)
+# ```
+# 
+# 
+# 
+# ```{r}
+# # ggboxplot(dat.clean, x = "income_category_comb", y = "accuse", 
+# #           color = "income_category_comb",
+# #           ylab = "Mean score", xlab = "Income category")
+# # 
+# # 
+# # ggline(dat.clean, x = "income_category_comb", y = "accuse", 
+# #        add = c("mean_se", "jitter"), 
+# #        ylab = "Accuse", xlab = "income_category")
+# 
+# aov_acc_inc <- aov(accuse ~ income_category_comb, data = dat.clean)
+# # It is stated in the model that Estimated effects may be unbalanced 
+# aov_acc_inc <- tidy(aov_acc_inc)
+# 
+# aov_inc_all <- rbind(aov_tot_inc, aov_dem_inc, aov_bear_inc, aov_acc_inc)[c(1,3,5,7),c(6)]
+# 
+# Term <- c("Total", "Demand", "Bear", "Accuse")
+# 
+
+```
+
+
+
+
+
+```{r}
+
+# Only Bear domain is found to be statistically significant for income category. We further applied tukeyHSD post-hoc analysis to the bear domain. We found that "more than 12000" is significant in comparison with "less than 2000". In addition, "more than 12000" is significant in comparison with "from 2000 to 6000". ~~It is worth noting that the Bear factor is dealing with the ability to bear stuff that someone hates. Thus, I think, may be linked to the income.~~ Regarding father education, total questions were significant as well as bear and accuse factors. For the total questions, university and post grad is significant in comparison to preparatory and secondary education. For the bear factor, we found significant differences between University Degree & post-grad vs prep/sec
+# and prep/sec vs R&W_prim. Finally for the accuse factor, significant differences are between University Degree & post-grad  vs Illiterate  and University Degree & post-grad  vs prep/sec. 
+
+#TukeyHSD(aov_bear_inc)
+
+```
+
+
+
+
+```{r}
+#pairwise.t.test(dat.clean$bear, dat.clean$income_category_comb,
+#                p.adjust.method = "BH")
+
+```
+
+
+
+```{r}
+#plot(aov_dem_inc, 1)
+
+```
+
+```{r}
+#plot(aov_bear_inc, 1)
+
+# Points 992, 587 and 171 are detected as outliers, which can severely affect normality and homogeneity of variance. It can be useful to remove outliers to meet the test assumptions.
+
+```
+
+
+```{r}
+#plot(aov_acc_inc, 1)
+
+```
+
+```{r}
+library(car)
+
+#leveneTest(demand ~ income_category_comb, data = dat.clean)
+
+#leveneTest(bear ~ income_category_comb, data = dat.clean)
+
+#leveneTest(accuse ~ income_category_comb, data = dat.clean)
+
+```
+
+
+```{r}
+#plot(aov_dem_inc, 2)
+# 
+# 
+# # Extract the residuals
+# aov_residuals <- residuals(object = aov_dem_inc)
+# # Run Shapiro-Wilk test
+# #shapiro.test(x = aov_residuals )
+# 
+# 
+# 
+# #plot(aov_bear_inc, 2)
+# 
+# # Extract the residuals
+# aov_residuals <- residuals(object = aov_bear_inc)
+# # Run Shapiro-Wilk test
+# #shapiro.test(x = aov_residuals )
+# 
+# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
+# 
+# #plot(aov_acc_inc, 2)
+# 
+# # Extract the residuals
+# aov_residuals <- residuals(object = aov_acc_inc)
+# # Run Shapiro-Wilk test
+# #shapiro.test(x = aov_residuals )
+# 
+# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
+
+
+```
+
+ 
+
+```{r}
+# aov_tot_edu <- aov(as.numeric(total_mean$Mean_score) ~ total_mean$father_education, data = total_mean)
+# 
+# aov_tot_edu <- tidy(aov_tot_edu)  
+
+```
+
+
+```{r}
+# dat.clean<- na.omit(subset(SurveyData, select = c(demand, bear, accuse, father_edu_combined, sex, income_category_comb)))
+# 
+# # ggboxplot(dat.clean, x = "father_edu_combined", y = "demand", 
+# #           color = "father_edu_combined",
+# #           ylab = "Mean score", xlab = "father education")
+# # 
+# # 
+# # ggline(dat.clean, x = "father_edu_combined", y = "demand", 
+# #        add = c("mean_se", "jitter"), 
+# #        ylab = "Demand", xlab = "income_category")
+# 
+# aov_dem_edu <- aov(demand ~ father_edu_combined, data = dat.clean)
+# # It is stated in the model that Estimated effects may be unbalanced 
+# aov_dem_edu <- tidy(aov_dem_edu)
+
+```
+
+
+```{r}
+# ggboxplot(dat.clean, x = "father_edu_combined", y = "bear", 
+#           color = "father_edu_combined",
+#           ylab = "Mean score", xlab = "father education")
+# 
+# 
+# ggline(dat.clean, x = "father_edu_combined", y = "bear", 
+#        add = c("mean_se", "jitter"), 
+#        ylab = "Bear", xlab = "income_category")
+
+
+# aov_bear_edu <- aov(bear ~ father_edu_combined, data = dat.clean)
+# # It is stated in the model that Estimated effects may be unbalanced 
+# aov_bear_edu <- tidy(aov_bear_edu)
+
+```
+
+
+
+```{r}
+# ggboxplot(dat.clean, x = "father_edu_combined", y = "accuse", 
+#           color = "father_edu_combined",
+#           ylab = "Mean score", xlab = "father education")
+# 
+# 
+# ggline(dat.clean, x = "father_edu_combined", y = "accuse", 
+#        add = c("mean_se", "jitter"), 
+#        ylab = "Accuse", xlab = "income_category")
+
+# aov_acc_edu <- aov(accuse ~ father_edu_combined, data = dat.clean)
+# # It is stated in the model that Estimated effects may be unbalanced 
+# aov_acc_edu <- tidy(aov_acc_edu)
+# 
+# aov_edu_all <- rbind(aov_tot_edu, aov_dem_edu, aov_bear_edu, aov_acc_edu)[c(1,3,5,7), c(6)]
+# 
+# anova_table <- cbind(Term, aov_inc_all, aov_edu_all) 
+# 
+# colnames(anova_table) <- c("Term", "Income", "father education")
+# 
+# names(anova_table) <- make.names(names(anova_table)) # flextable doesn't work except on syntactic names
+# 
+# anova_table <- rmdtable(anova_table)
+# 
+# anova_table <- color(anova_table, i = ~ Income < 0.05 | father.education < 0.05, j = ~ Income + father.education, color = "red")
+
+#anova_table
+```
+
+
+
+
+
+```{r}
+#TukeyHSD(aov_tot_edu)
+
+```
+
+
+```{r}
+#TukeyHSD(aov_bear_edu)
+```
+
+```{r}
+#TukeyHSD(aov_acc_edu)
+
+```
+
+
+
+```{r}
+#plot(aov_dem_edu, 1)
+
+```
+
+
+
+```{r}
+#plot(aov_bear_edu, 1)
+
+# I can't see a violation for homogenity of variance. I think it is a matter of few outliers .
+
+# Points 992, 587 and 171 are detected as outliers, which can severely affect normality and homogeneity of variance. It can be useful to remove outliers to meet the test assumptions.
+
+```
+
+
+```{r}
+#plot(aov_acc_edu, 1)
+
+```
+
+
+```{r}
+#leveneTest(demand ~ father_edu_combined, data = dat.clean)
+
+# leveneTest(bear ~ father_edu_combined, data = dat.clean)
+# 
+# leveneTest(accuse ~ father_edu_combined, data = dat.clean)
+
+```
+
+
+
+```{r}
+#plot(aov_dem_edu, 2)
+
+# Extract the residuals
+# aov_residuals <- residuals(object = aov_dem_edu )
+# # # Run Shapiro-Wilk test
+# # shapiro.test(x = aov_residuals )
+# 
+# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
+# 
+# #plot(aov_bear_edu, 2)
+# 
+# # Extract the residuals
+# aov_residuals <- residuals(object = aov_bear_edu)
+# # Run Shapiro-Wilk test
+# #shapiro.test(x = aov_residuals )
+# 
+# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
+# 
+# 
+# #plot(aov_acc_edu, 2)
+# 
+# # Extract the residuals
+# aov_residuals <- residuals(object = aov_acc_edu )
+# # Run Shapiro-Wilk test
+# #shapiro.test(x = aov_residuals )
+# 
+# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
+
+
+```
+
+
+```{r}
+# ggboxplot(dat.clean, x = "sex", y = "demand", 
+#           color = "sex",
+#           ylab = "Mean score", xlab = "sex")
+
+
+# ggline(SurveyData, x = "sex", y = "demand", 
+#        add = c("mean_se", "jitter"), 
+#        ylab = "Demand", xlab = "sex")
+# 
+# t_test_tot_sex <- t.test(as.numeric(as.character(total_mean$Mean_score))
+#  ~ sex, data = total_mean, var.equal = TRUE)
+# t_test_tot_sex <- tidy(t_test_tot_sex)
+# 
+# t_test_sex_dem <- t.test(demand ~ sex, data = dat.clean, var.equal = TRUE)
+# t_test_sex_dem <- tidy(t_test_sex_dem)
+
+```
+
+
+```{r}
+
+# ggboxplot(dat.clean, x = "sex", y = "bear", 
+#           color = "sex",
+#           ylab = "Mean score", xlab = "sex")
+
+
+# ggline(SurveyData, x = "sex", y = "bear", 
+#        add = c("mean_se", "jitter"), 
+#        ylab = "Bear", xlab = "sex")
+
+# t_test_sex_bear <- t.test(bear ~ sex, data = dat.clean, alternative = "two.sided", var.equal = TRUE)
+# t_test_sex_bear <- tidy(t_test_sex_bear)
+# 
+
+```
+
+
+```{r}
+# ggboxplot(dat.clean, x = "sex", y = "accuse", 
+#           color = "sex",
+#           ylab = "Mean score", xlab = "sex")
+
+
+# ggline(SurveyData, x = "sex", y = "accuse", 
+#        add = c("mean_se", "jitter"), 
+#        ylab = "Accuse", xlab = "sex")
+
+# 
+# t_test_sex_acc <- t.test(accuse ~ sex, data = dat.clean, alternative = "two.sided", var.equal = TRUE)
+# t_test_sex_acc <- tidy(t_test_sex_acc)
+# Domains
+# sex_ttest <- cbind(Domains, rbind(t_test_sex_dem[c(1,2,4)], t_test_sex_bear[c(1,2,4)], t_test_sex_acc[c(1,2,4)]))
+# 
+# colnames(sex_ttest)[2] <- "Female"
+# colnames(sex_ttest)[3] <- "Male"
+# 
+# sex_ttest <- rmdtable(sex_ttest)
+# 
+# sex_ttest <- color(sex_ttest, i = ~ p.value < 0.05, j = ~ p.value , color = "red")
+# 
+# sex_ttest
+
+```
+
+Parametric tests as MANOVA should be used with caution with ordinal data like the likert scale we are dealing with, as assumptions maybe violated. However, we are using the average score for the questions. This renders the questions in a continuous rather than a categorical form. The same methodology has been previously applied in a similar article written by [@bonnerDevelopmentValidationParent2006]. Moreover, with the large sample size we have, normality is never a problem. [click to view reference](https://www.st-andrews.ac.uk/media/capod/students/mathssupport/OrdinalexampleR.pdf). Box's M test was used to test the assumption of homogeneity of variances and covariances and the assumption was not violated.  
+
+```{r}
+
+# MANOVA for gender
+
+# Assumptions of MANOVA
+
+# MANOVA can be used in certain conditions:
+# 
+# The dependent variables should be normally distribute within groups. The R function mshapiro.test( )[in the mvnormtest package] can be used to perform the Shapiro-Wilk test for multivariate normality. This is useful in the case of MANOVA, which assumes multivariate normality.
+# 
+# Homogeneity of variances across the range of predictors.
+# 
+# Linearity between all pairs of dependent variables, all pairs of covariates, and all dependent variable-covariate pairs in each cell
+
+library(RVAideMemoire)
+
+#mshapiro.test(cor_data)
+
+# here I tried to test for multivariate normality, however, due to the large sample size, p value of shapiro wilk test is definetely significant. Thus, we will shift to the package MVN: An R Package for Assessing Multivariate Normality  
+
+library(MVN)
+
+# result <- mvn(data = cor_data, mvnTest = "mardia")
+# result$multivariateNormality
+# 
+# 
+# result <- mvn(data = cor_data, mvnTest = "hz")
+# result$multivariateNormality
+# 
+# 
+# result <- mvn(data = cor_data, mvnTest = "royston")
+# result$multivariateNormality
+# # this depends on shapiro, so shouldn't be used with a large sample size
+# 
+# 
+# result <- mvn(data = cor_data, mvnTest = "dh")
+# result$multivariateNormality
+# 
+# 
+# result <- mvn(data = cor_data, mvnTest = "energy")
+# result$multivariateNormality
+
+# here it appears that for all tests, the normality assumption is violated, however, this is not a problem because we have a large sample size. 
+
+
+# mnva_qplot <- function(data){
+#   # create univariate Q-Q plots
+# mvn(data = data, mvnTest = "royston", univariatePlot = "qqplot")
+# }
+# 
+# dsc_table <- mnva_qplot(cor_data)
+# 
+# dsc_table <- dsc_table$Descriptives[1:8]
+# 
+# rmdtable(dsc_table)
+
+# mnva_hist <- function(data){   # create univariate histograms
+# 
+#   mvn(data = cor_data, mvnTest = "royston", univariatePlot = "histogram")
+# }
+# 
+# mnva_hist(cor_data)
+
+
+# From the plots, it appears that demand factor is the most problematic. 
+# However, again this is not a problem
+
+# https://cran.r-project.org/web/packages/MVN/vignettes/MVN.pdf  the perfect package
+
+
+# Now it is time to test for homogenity of variance assumption 
+
+ # create a data set for three mult columns and sex 
+
+test_data <- cbind(cor_data, SurveyData$sex)
+
+colnames(test_data)[4] <- "sex"
+
+library(micompr)
+
+#assumptions_manova(cor_data, test_data$sex)
+
+# Box's M test is a multivariate statistical test used to check the equality of multiple variance-covariance matrices.[1] The test is commonly used to test the assumption of homogeneity of variances and covariances in MANOVA and linear discriminant analysis. It is named after George E. P. Box.
+# 
+# Box's M test is susceptible to errors if the data does not meet model assumptions or if the sample size is too large or small.[2] Box's M test is especially prone to error if the data does not meet the assumption of multivariate normality
+
+
+# here it appears that multivariate homogenity of variance assumption is not violated
+
+
+################
+
+# datacamp made a quick reference for MANOVA with assumptions 
+
+# I will move with this guide step by step 
+
+# https://www.statmethods.net/stats/anova.html 
+
+mnv_tbl <- function(col){
+  
+  fit_sex <- tidy(manova(as.matrix(cor_data) ~ col), test = "Hotelling-Lawley")
+
+fit_sex <- fit_sex[1, c(1,2,3,4,7)]
+
+colnames(fit_sex) <- c("Factor", "df", "Hotelling-Lawley trace", "F", "p.value")
+
+return(fit_sex)  
+}
+
+mnv_sex <- mnv_tbl(SurveyData$sex)
+
+# fit_sex <- tidy(manova(as.matrix(cor_data) ~ SurveyData$sex, test = "Hotelling-Lawley"), test = "Hotelling-Lawley")
+# 
+# fit_sex <- fit_sex[1, c(1,2,3,4,7)]
+# 
+# colnames(fit_sex) <- c("Factor", "df", "Hotelling-Lawley trace", "F", "p.value")
+
+
+# for gender, we have 1 degree of freedom, so all tests should be identical. 
+# however, here wilks is different and I don't know why 
+
+# summary(fit, test="Pillai")
+# 
+# summary(fit, test="Wilks")
+# 
+# summary(fit, test="Hotelling-Lawley")
+# 
+# summary(fit, test="Roy")
+
+
+# When the hypothesis degrees of freedom, h, is one, all four test statistics will lead to identical results. When h>1,
+# the four statistics will usually lead to the same result. When they do not, the following guidelines from
+# Tabachnick (1989) may be of some help.
+# Wilks' Lambda, Lawley's trace, and Roy's largest root are often more powerful than Pillai's trace if h>1 and one
+# dimension accounts for most of the separation among groups. Pillai's trace is more robust to departures from
+# assumptions than the other three.
+# Tabachnick (1989) provides the following checklist for conducting a MANOVA. We suggest that you consider
+# these issues and guidelines carefully.
+
+# significant result, and it is the same value for all tests
+
+#summary.aov(fit, test="Wilks")  # univariate anova
+
+# checking assumptions
+
+# The aq.plot() function in the mvoutlier package allows you to identfy multivariate outliers by plotting the ordered squared robust Mahalanobis distances of the observations against the empirical distribution function of the MD2i. Input consists of a matrix or data frame. The function produces 4 graphs and returns a boolean vector identifying the outliers.
+library(mvoutlier)
+
+# outliers <- aq.plot(cor_data)
+# outliers # show list of outliers
+
+# testing normality 
+
+# mshapiro.test(as.matrix(cor_data))
+# 
+# # Graphical Assessment of Multivariate Normality
+# x <- as.matrix(cor_data) # n x p numeric matrix
+# center <- colMeans(x) # centroid
+# n <- nrow(x); p <- ncol(x); cov <- cov(x); 
+# d <- mahalanobis(x,center,cov) # distances 
+# qqplot(qchisq(ppoints(n),df=p),d,
+#   main="QQ Plot Assessing Multivariate Normality",
+#   ylab="Mahalanobis D2")
+#abline(a=0,b=1)
+
+```
+
+
+
+```{r}
+
+# sex_manova <- rmdtable(tidy(HotellingsT2(as.matrix(cor_data) ~ SurveyData$sex)))
+
+# SPSS will give Hotelling's Trace, and it has to convert to Hotelling's T^2 as follows:
+#   Multiplying Hotelling's Trace by (N - L), where N is the sample size across all groups and L is the number of groups, gives a generalized version of Hotelling's T^2.
+
+# https://www.researchgate.net/post/How_can_I_do_Hotellings_T-square 
+
+#Parent score differ according to child's gender. 
+
+```
+
+
+
+```{r}
+
+### MANOVA father education 
+
+# SurveyData$mo_edu <- SurveyData$Mother_education
+# 
+# SurveyData$mo_edu <- car::recode(SurveyData$mo_edu, "'Illiterate' = 1; c('read n write', 'primary') = 2; 
+#   c('prep', 'secondary +') = 3; 'University Degree' = 4")
+# 
+# 
+# SurveyData$fa_edu <- car::recode(SurveyData$father_edu_combined, "'Illiterate' = 1; 'R&W_prim' = 2; 'prep/sec' = 3; 'University Degree & post-grad' = 4")
+# 
+# SurveyData$parent_education <- SurveyData$fa_edu
+# 
+# SurveyData$parent_education[SurveyData$author == "mother"] <- SurveyData$mo_edu[SurveyData$author == "mother"]
+# 
+# levels(SurveyData$parent_education) <- c("Illiterate", "R&W-PRIM", "PREP-SEC", "University")
+# 
+edu_data <- cbind(cor_data, SurveyData$parent_education)
+
+colnames(edu_data)[4] <- "edu"
+
+edu_data <- edu_data[complete.cases(edu_data),]
+
+#assumptions_manova(edu_data[1:3], as.factor(edu_data$edu))
+
+# here the homogenity of variance assumption is not violated
+#although the test is sensitive to large numbers, meaning that it may cause the assumption to be violated even when tiny departures from hokmogenity are present. 
+#however, here it is not violated.
+
+fit_edu <- manova(as.matrix(cor_data) ~ SurveyData$parent_education)
+
+m <- list(summary(fit_edu, test="Pillai"),
+summary(fit_edu, test="Wilks"),
+summary(fit_edu, test="Hotelling-Lawley"),
+summary(fit_edu, test="Roy"),
+summary.aov(fit_edu, test="Wilks")  # univariate anova
+)
+
+mnv_edu <- mnv_tbl(SurveyData$parent_education)
+
+```
+
+```{r}
+
+### MANOVA for income
+
+inc_data <- cbind(cor_data, SurveyData$income_category_comb)
+
+colnames(inc_data)[4] <- "inc"
+inc_data <- inc_data[complete.cases(inc_data),]
+
+#assumptions_manova(inc_data[1:3], as.factor(inc_data$inc))
+
+# homogenity of variance assumption is not violated
+
+mnv_income <- mnv_tbl(SurveyData$income_category_comb)
+
+fit <- manova(as.matrix(inc_data[1:3]) ~ inc_data$inc)
+#tidy(fit, test = "Hotelling-Lawley")
+
+m <- list(summary(fit, test="Pillai"),
+summary(fit, test="Wilks"),
+summary(fit, test="Hotelling-Lawley"),
+summary(fit, test="Roy"),
+summary.aov(fit, test="Wilks")  # univariate anova
+)
+
+ # it is highly significant for all
+
+```
+
+
+```{r}
+
+# ANOVA parent gender
+
+parent_data <- cbind(cor_data, SurveyData$author)
+
+colnames(parent_data)[4] <- "parent"
+
+parent_data <- parent_data[complete.cases(parent_data),]
+
+#assumptions_manova(parent_data[1:3], as.factor(parent_data$parent))
+
+#assumption not working and I don't know why
+
+#assumptions_manova(parent_data[1:3], parent_data$parent)
+
+# homogenity of variance assumption is not violated
+
+mnv_parent <- mnv_tbl(SurveyData$parent_education)
+# results of the function are wrong 
+
+fit_parent <- manova(as.matrix(parent_data[1:3]) ~ parent_data$parent)
+
+fit_parent <- tidy(fit_parent, test = "Hotelling-Lawley")
+
+m <- list(summary(fit, test="Pillai"),
+summary(fit, test="Wilks"),
+summary(fit, test="Hotelling-Lawley"),
+summary(fit, test="Roy"),
+summary.aov(fit, test="Wilks")  # univariate anova
+)
+
+fit_parent <- fit_parent[1, c(1,2,3,4,7)]
+
+colnames(fit_parent) <- c("Factor", "df", "Hotelling-Lawley trace", "F", "p.value")
+
+mnv_tbls <- rbind(mnv_sex, fit_parent, mnv_edu, mnv_income )
+ # it is highly significant for all
+
+mnv_tbls$Factor <- c("child gender", "parent gender", "parent education", "family income")
+
+mnv_tbls <- rmdtable(mnv_tbls)
+
+mnv_tbls <- color(mnv_tbls, i = ~ p.value < 0.05, j = ~ p.value , color = "red")
+mnv_tbls
+```
+Table MANOVA results for parent and children factors
+
+The scale scores varied significantly. with child gender, family income and parent education but not with parent gender. For child gender and parent gender, the degrees of freedom were 1. For all results, the four tests, Pillai, Wilks, Hotelling-Lawley and Roy provided quite similar results and here we report Hotelling-Lawley trace results. 
+
+
+### Post-hoc MANOVA family income
+
+
+```{r}
+
+levels(inc_data$inc) <- c("<2", "2-6", "6-12", ">12")
+
+inc_post <- mergeFactors(response = inc_data[,1:3],
+                                   factor = factor(inc_data$inc),
+                                   method = "adaptive") 
+
+plot(inc_post, panel = "GIC", nodesSpacing = "effects", colorCluster = TRUE)
+
+```
+
+The higher the family income, the less common irrational believes are. 
+
+### Domains' Averages according to income group 
+
+
+```{r}
+
+inc_mean <- inc_data %>% 
+  group_by(inc) %>%
+  summarise_all(mean)
+
+rmdtable(inc_mean)
+```
+
+
+### Significance of groups splitting 
+
+
+```{r}
+
+inc_post_h <- mergingHistory(inc_post, showStats = TRUE) 
+inc_post_h <- rmdtable(inc_post_h)
+
+inc_post_h <- color(inc_post_h, i = ~ pvalVsPrevious < 0.05, j = ~ pvalVsPrevious , color = "red")
+
+inc_post_h
+
+```
+
+Each row of the above frame describes one step of the merging algorithm. First two columns specify which groups were merged in the iteration. Last two columns are p-values for the Likelihood Ratio Test - against the full model (pvalVsFull) and against the previous one (pvalVsPrevious). Only the last step is significant, splitting the income categories into less than 6000 and more than 6000. 
+
+
+### Post hoc MANOVA parent education level
+
+
+```{r fig.height= 12, fig.width= 12}
+
+library(factorMerger)
+
+# post hoc MANOVA education
+
+edu_post <- mergeFactors(response = edu_data[,1:3],
+                                   factor = factor(edu_data$edu),
+                                   method = "adaptive") 
+
+plot(edu_post, panel = "GIC", nodesSpacing = "effects", colorCluster = TRUE)
+
+```
+
+Parents with a university degree or higher experience less commonly irrational believes than others with lower educational level. 
+
+
+### Domains' Averages according to income group 
+
+
+```{r}
+
+edu_mean <- edu_data %>% 
+  group_by(edu) %>%
+  summarise_all(mean)
+
+rmdtable(edu_mean)
+
+```
+
+### Significance of groups splitting 
+
+
+```{r}
+
+edu_post_h <- mergingHistory(edu_post, showStats = TRUE) 
+edu_post_h <- rmdtable(edu_post_h)
+
+edu_post_h <- color(edu_post_h, i = ~ pvalVsPrevious < 0.05, j = ~ pvalVsPrevious , color = "red")
+
+edu_post_h
+# data_edu <- SurveyData
+
+# data_edu <- filter(data_edu, !is.na(fa_edu), !is.na(mo_edu))
+# 
+# data_edu$max_edu <- pmin(data_edu$fa_edu, data_edu$mo_edu)
+# 
+# n <- data.frame(cbind(data_edu$fa_edu, data_edu$mo_edu)) # I am using this step, because pmax is producing wrong results in the large dataframe
+# 
+# n$max <- pmax(n$X1, n$X2)
+# 
+# data_edu$max_edu <- n$max
+# # table(n$max)
+# table(data_edu$max_edu)
+
+
+```
+
+Splitting university from all other educational levels yielded significant results. 
+
+
+
+```{r}
+
+# We found that score differs significantly for the total questions. However, bear is the only factor where sex is found to be significantly affecting the score. 
+
+
+# demand_p <- var.test(demand ~ sex, data = dat.clean)
+# 
+# demand_p <- demand_p$p.value
+# 
+# bear_p <- var.test(bear ~ sex, data = dat.clean)
+# bear_p <- bear_p$p.value
+# 
+# accuse_p <- var.test(accuse ~ sex, data = dat.clean)
+# accuse_p <- accuse_p$p.value
+# 
+# cbind(demand_p, bear_p, accuse_p)
+# # combining box plots 
+
+# # ggboxplot(dat.clean, x = "father_edu_combined", y = "cognitive_dim", 
+# #           color = "income_category_comb",
+#           ylab = "Mean score", xlab = "Income category")
+
+```
+
+### Limitations
+
+We have used only three levels of likert scale questions. Results could have been more powerful if we used at least five levels. In addition, using an odd number of levels may drive the responder to choose the middle response. On the contrary, using an even number of levels could have avoided this. 
+
+
+### References
+
+
