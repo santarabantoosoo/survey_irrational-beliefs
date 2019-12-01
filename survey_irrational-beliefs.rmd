@@ -4,14 +4,6 @@ output: word_document
 bibliography: library.bib
 ---
 
-
-https://stats.stackexchange.com/questions/302078/correct-procedure-to-calculate-mcdonalds-omega-in-r-using-the-psych-package   most important 
-
-
-https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3909043/ 
-
-
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = NA,
                       fig.height = 15, fig.width = 15)
@@ -22,15 +14,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = 
 # Statistical analysis 
 
 
-I couldn't perform confirmatory factor analysis since correlation was very high between factors  
-
-what is omega >??  why is it different from fa 
-
-With R packages, it is the same process. You use your traditional command (factor, CFA,...) but you compute your analyses on the polychoric correlations matrix. First step, you compute the matrix (e.g.: poly.mat in psych package) and you compute secondly EFA on this matrix. The results are very impressive. For CFA, you can use Lavaan package which compute directly polychoric correlations matrix and process your confirmatory factor analysis. The result are totally similar to Mplus (EFA and CFA).
-
-#https://www.researchgate.net/post/Factor_analysis_based_on_polychoric_correlations_and_alpha_vs_omega_vs_greatest_lower_bound
-
-Exploratory factor analysis, principal component analysis, alpha drop method and correlation coefficients were used to decide which questions shall better be removed from the score. Minimum residual factor analysis was the method chosen to determine number of domains and to group questions into specific domains. Cronbach alpha was calculated for all questions combined and separately for each domain. MANOVA followed by post-hoc analysis were then applied to check for significant differences across groups. R Foundation for Statistical Computing,Vienna, Austria version 3.5.2 was used for the statistical analysis. R packages used in the analysis were psych version 1.8.4 for factor analysis , HH version 3.1-35 for plotting likert data, factorMerger version 0.3.6 for merging factor levels and broom version 0.5.0 for tidying up model coefficients. 
+R packages used in the analysis were psych version 1.8.4 for factor analysis , HH version 3.1-35 for plotting likert data, factorMerger version 0.3.6 for merging factor levels and broom version 0.5.0 for tidying up model coefficients. 
 
 
 # Results
@@ -38,30 +22,11 @@ Exploratory factor analysis, principal component analysis, alpha drop method and
 
 
 ```{r}
+options(scipen = 999)
+
 library(data.table)
 library(lavaan)
 library(psych)
-
-# http://www.bwgriffin.com/gsu/courses/edur9131/content/Neill2008_WritingUpAFactorAnalysis.pdf 
-
-# use this link to write factor analysis 
-
-
-# https://www.r-bloggers.com/writing-manuscripts-in-rstudio-easy-citations/   for citation
-
-# to do.
-# 
-# Tidying bibliography files
-# When you are done writing, your bibliography file is likely to contain some unneeded references, which you added while writing but removed during revisions. tidy_bib_file() removes unneeded (or duplicate) entries from your bibliography file.
-
-# tidy_bib_file(
-#   rmd_file = "report.Rmd"
-#   , messy_bibliography = "references.bib"
-#   , file = "tidy_references.bib"
-# )
-options(scipen = 999)
-
-library(blavaan)  # bayesian lavaan
 library(factorMerger) # for post-hoc analysis for MANOVA
 library(mvoutlier) # detecting multivariate outliers
 library(micompr) # for testing for normality and homogenity of variance in MANOVA
@@ -91,7 +56,9 @@ library(ICSNP)   # for hotelling test
 library(readxl)
 library(mirt) # for fitting multidimentional IRT 
 
-  SurveyData <-read.csv("es_data.csv")
+# When you are done writing, your bibliography file is likely to contain some unneeded references, which you added while writing but removed during revisions. tidy_bib_file() removes unneeded (or duplicate) entries from your bibliography file.
+
+SurveyData <-read.csv("es_data.csv")
 
 # ------------------------- primary data checks --------------------------------
 ## complete cases Questions
@@ -228,7 +195,7 @@ levels(SurveyData$parent_education) <- c("Illiterate", "R&W-PRIM", "PREP-SEC", "
 
 ```
 
-We performed exploratory factor analysis (EFA) for the 61-item version of the questionnaire using data from the 950 participants. Apart from few missing data in demographics (table 1), nothing was missing regarding the survey answers to all questions. We calculated total family income by summing up father monthly salary, mother monthly salary as well as other incomes gained from other resources. We tried to categorize income and father education into meaningful categories, with an attempt to avoid small number of participants in subgroups so as to have valid statistical comparisons.  
+Apart from few missing data in demographics (table 1), nothing was missing regarding the survey answers to all questions. We calculated total family income by summing up father monthly salary, mother monthly salary as well as other incomes gained from other resources. We tried to categorize income and father education into meaningful categories, with an attempt to avoid small number of participants in subgroups so as to have valid statistical comparisons.  
 
 ```{r}
 
@@ -242,1545 +209,283 @@ table1(~ sex +  governorate + parent + Number_of_family_members +  governorate +
 
 ```
 
-
-# CFA trial after removal of 16 questions ( repeated and misunderstood )
-
-
-```{r}
-
-
-mod <-'cog=~Q1+Q4+Q7+Q10+Q13+Q19+Q22+Q25+Q28+Q31+Q34+Q37+Q43+Q46+Q52
-
-emotional=~Q2+Q5+Q8+Q11+Q14+Q20+Q23+Q26+Q29+Q32+Q35+Q38+Q41+Q53+Q56+Q59+Q60
-
-behave=~Q15+Q21+Q24+Q27+Q30+Q33+Q36+Q58+Q39+Q42+Q48+Q54+Q57'
-?cor.smooth
-
-# removed : 6,9,12,18,45,3,47, 55,61,44,50, 16,17,49,51, 40       16 questions removed
-
-model.ord = cfa(mod,  data = SurveyData, ordered = c("Q1", "Q4", "Q7", "Q10", "Q13", "Q19", "Q22", "Q25", "Q28", "Q31", "Q34", "Q37", "Q43", "Q46", "Q52",  "Q2", "Q5", "Q8", "Q11", "Q14", "Q20", "Q23", "Q26", "Q29", "Q32", "Q35", "Q38", "Q41", "Q53", "Q56", "Q59", "Q60", "Q15", "Q21", "Q24", "Q27", "Q30", "Q33", "Q36", "Q58", "Q39", "Q42", "Q48", "Q54", "Q57"), std.lv = T)
-
-
-```
-
-is not Postive dedinite error
-
-I didn't perform smooting for the positive definite error, because I didn't find a smooting package in lavaan, found it only in psych.. I didn't know how to do the smooting in psych and then do define the domains in lavaan. 
-
-
-
-```{r}
-
-mod <-'cog=~Q1+Q4+Q7+Q10+Q13+Q16+Q19+Q22+Q25+Q28+Q31+Q34+Q37+Q40+Q43+Q46+Q49+Q52+Q55
-
-emotional=~Q2+Q5+Q8+Q11+Q14+Q17+Q20+Q23+Q26+Q29+Q32+Q35+Q38+Q41+Q44+Q47+Q50+Q53+Q56+Q59+Q60+Q61
-
-behave=~Q3+Q6+Q9+Q12+Q15+Q18+Q21+Q24+Q27+Q30+Q33+Q36+Q45+Q51+Q58+Q39+Q42+Q48+Q54+Q57'
-
-model.ord = cfa(mod,  data = SurveyData, ordered = c("Q1" , "Q4" , "Q7" , "Q10" , "Q13" , "Q16" , "Q19" , "Q22" , "Q25" , "Q28" , "Q31" , "Q34" , "Q37" , "Q40" , "Q43" , "Q46" , "Q49" , "Q52" , "Q55", "Q2" , "Q5" , "Q8" , "Q11" , "Q14" , "Q17" , "Q20" , "Q23" , "Q26" , "Q29" , "Q32" , "Q35" , "Q38" , "Q41" , "Q44" , "Q47" , "Q50" , "Q53" , "Q56" , "Q59" , "Q60" , "Q61", "Q3" , "Q6" , "Q9" , "Q12" , "Q15" , "Q18" , "Q21" , "Q24" , "Q27" , "Q30" , "Q33" , "Q36" , "Q45" , "Q51" , "Q58" , "Q39" , "Q42" , "Q48" , "Q54" , "Q57"), std.lv = T
-)
-
-summary(model.ord, standardized = T, rsquare = T, fit.measures = T)
-
-fitmeasures(model.ord)
-
-parameterestimates(model.ord, standardized = T)
-
-fitted(model.ord)
-
-tidy(model.ord)
-glance(model.ord)   #one line model fit
-
-#library(semPlot)
-# parameter solution
-# semPaths(model.ord, 
-#         whatLabels = "par", 
-#         layout = "tree")
-# 
-# # standardized solution
-# semPaths(model.ord, 
-#         whatLabels = "std", 
-#         layout = "tree")
-# 
-# 
-# residuals(model.ord)
-# inspect(model.ord, "sampstat")$cov  
-# lavCor(model.ord, ordered = T, group = NULL, output = "cor")
-# 
-# # the previous 2 functions are identical
-# #poly <- poly.mat(questions)
-# 
-# modif <- modificationIndices(model.ord, sort.=TRUE, minimum.value=3)  # here I sort the modifications that when considered can imrpove the fit of the model. 
-#  
-# foo <- head(modif, 40)
-# 
-# df1 <- data.frame(table(foo$lhs))
-# df2 <- data.frame(table(foo$rhs))
-# 
-# fs <- rbind(df1, df2) %>% 
-#   arrange(desc(Freq))
-# 
-# 
-# DT <- data.table(fs)  # DF is your original data
-# 
-# fs <- DT[, lapply(.SD, sum), by=list(Var1)]  # combine values having the same question 
-# 
-# 
-# ### residuals    couldn't calculate this for my model 
-# 
-# cor_table <- residuals(model.ord, type = "cor")$cor
-# bee <- residuals(model.ord)$cov
-# 
-# cor_table[upper.tri(cor_table)] <- NA # erase the upper triangle
-# diag(cor_table) <- NA # erase the diagonal 0's
-# 
-# kable(cor_table, digits=2) # makes a nice table and rounds everyhing to 2 digits
-# 
-# 
-# 
-# 
-# # Model Comparison
-# # Sometimes you have two competing theories to test on the same variables. In that situation, running more than one CFA and testing the fit of the two models against each other can be a valuable part of your analysis.
-# 
-# 
-# 
-# model.ord_orth = cfa(mod,  data = SurveyData, ordered = c("Q1" , "Q4" , "Q7" , "Q10" , "Q13" , "Q16" , "Q19" , "Q22" , "Q25" , "Q28" , "Q31" , "Q34" , "Q37" , "Q40" , "Q43" , "Q46" , "Q49" , "Q52" , "Q55", "Q2" , "Q5" , "Q8" , "Q11" , "Q14" , "Q17" , "Q20" , "Q23" , "Q26" , "Q29" , "Q32" , "Q35" , "Q38" , "Q41" , "Q44" , "Q47" , "Q50" , "Q53" , "Q56" , "Q59" , "Q60" , "Q61", "Q3" , "Q6" , "Q9" , "Q12" , "Q15" , "Q18" , "Q21" , "Q24" , "Q27" , "Q30" , "Q33" , "Q36" , "Q45" , "Q51" , "Q58" , "Q39" , "Q42" , "Q48" , "Q54" , "Q57"), std.lv = T, orthogonal = T
-# )   #https://stackoverflow.com/questions/41395611/cfa-in-r-lavaan-with-ordinal-data-polychoric-correlation-included 
-# 
-# tidy(model.ord_orth)
-# glance(model.ord_orth)   #one line model fit
-# 
-# # model firts (cfi, tli and RMSEA are very bad )
-# 
-# 
-# table(questions[2:4]) # I am checking here that I don't have zeros,     tried this for few columns and I think zeros are not found
-# 
-# 
-# model.ord_orth = cfa(mod,  data = SurveyData, ordered = c("Q1" , "Q4" , "Q7" , "Q10" , "Q13" , "Q16" , "Q19" , "Q22" , "Q25" , "Q28" , "Q31" , "Q34" , "Q37" , "Q40" , "Q43" , "Q46" , "Q49" , "Q52" , "Q55", "Q2" , "Q5" , "Q8" , "Q11" , "Q14" , "Q17" , "Q20" , "Q23" , "Q26" , "Q29" , "Q32" , "Q35" , "Q38" , "Q41" , "Q44" , "Q47" , "Q50" , "Q53" , "Q56" , "Q59" , "Q60" , "Q61", "Q3" , "Q6" , "Q9" , "Q12" , "Q15" , "Q18" , "Q21" , "Q24" , "Q27" , "Q30" , "Q33" , "Q36" , "Q45" , "Q51" , "Q58" , "Q39" , "Q42" , "Q48" , "Q54" , "Q57"), std.lv = T, orthogonal = T
-# )   #https://stackoverflow.com/questions/41395611/cfa-in-r-lavaan-with-ordinal-data-polychoric-correlation-included 
-# 
-# mod_cov <-'cog ~~ emotional
-# cog ~~ behave
-# emotional ~~ behave
-# cog=~Q1+Q4+Q7+Q10+Q13+Q16+Q19+Q22+Q25+Q28+Q31+Q34+Q37+Q40+Q43+Q46+Q49+Q52+Q55
-# emotional=~Q2+Q5+Q8+Q11+Q14+Q17+Q20+Q23+Q26+Q29+Q32+Q35+Q38+Q41+Q44+Q47+Q50+Q53+Q56+Q59+Q60+Q61
-# behave=~Q3+Q6+Q9+Q12+Q15+Q18+Q21+Q24+Q27+Q30+Q33+Q36+Q45+Q51+Q58+Q39+Q42+Q48+Q54+Q57'
-# 
-# model.ord_orth = cfa(mod_cov,  data = SurveyData, ordered = names(questions), std.lv = T)   #https://stackoverflow.com/questions/41395611/cfa-in-r-lavaan-with-ordinal-data-polychoric-correlation-included 
-#   
-# tidy(model.ord_orth)
-# glance(model.ord_orth)
-# glance(model.ord)
-# 
-# anova(model.ord_orth, model.ord)
-# 
-# semPaths(model.ord, what = "est", edge.label.cex = 0.3,
-#   edge.color = 1, esize = 1, sizeMan = 3, asize = 2.5,
-#   intercepts = FALSE, rotation = 4, thresholdColor = "red",
-#   mar = c(1, 5, 1.5, 5), fade = FALSE, nCharNodes = 7)
-# 
-# 
-# #The dashed arrows show which loadings were fixed to a value of 1 for identifiability reasons. The manifest variables (indicators) are plotted as squares and the latent variables as circles.   
-# 
-# inspect(model.ord, what = "est")$theta
-# 
-# inspect(model.ord, what = "est")$lambda  # The loadings (??) 
-# 
-# 
-# st_loadings <- data.frame(inspect(model.ord, what = "std")$lambda)  # standardized loadings
-# st_loadings <- rownames_to_column(st_loadings)
-# 
-# 
-# low_st_load <- st_loadings %>% 
-#   filter(cog > 0 & cog < 0.3 | behave > 0 & behave < 0.3 | emotional > 0 & emotional < 0.3)
-# 
-# 
-# low_combined <- low_st_load %>% 
-#   filter(rowname %in% fs$Var1)
-# 
-# low_st_load 
-# 
-# modif_mentioned_more_than_2 <- fs %>% 
-#   filter(Freq > 2)
-# 
-# modif
-# 
-# inspect(model.ord, what = "est")$psi    # latent variable covariance matrix 
-# inspect(model.ord, what = "std")$psi    # latent variable correlation matrix 
-
-```
-
-can not perform confirmatory factor analysis using these latent variables, since they arwe almost fully correlated. They should be combined instead. 
-
-http://davidakenny.net/cm/mfactor.htm 
-
-Discriminant Validity
-Definition of poor discriminant validity: The correlation between two factors is or is very close to one or minus one.
-
-          Criteria: A correlation of .85 or larger in absolute value indicates poor discriminant validity
-
-
-
-factor loading from std.all in latent variables section is really good 
-https://www.cscu.cornell.edu/news/Handouts/SEM_fit.pdf 
-
-kline	suggests	that	at	a	minimum	the	following	indices	should	be	reported:
-1) The	model	chi-square
-2) RMSEA
-3) CFI
-4) SRMR
-Ref :
-Structural	Equation	Modelling:	Guidelines	for	Determining	Model	Fit.	Daire	Hooper,	et	al.	2008.	 
-
-cfi : comparative fit index, 0.862 not perfectly high.  CFI is relatively sample size insensitive. 
-tli : tucket lewis index,   0.857 not perfectly high, not sample size sensitive
-RMSEA : 0.0665   acceptable     However, RMSEA fit measure is quite sample size sensitive, penalizing small sample studies.
-srmr : 0.093  a bit higher than acceptable. srmr may penalize small sampel size  
-
-if two items have very high correlations, consider removing one of them
-
-are our results logical ? 
-test R2 to be less than 1 ... that's true   R2 are SMC ( squared multiple correlations) 
-test that variances are positive 
-Thus, no heywood case ... 
-it sometimes warns you that you have heywood case, however, not everytime 
-so you may have numbers generated that are totally non-sense.   we always have to check if we have a warning message 
-
-checking if we have unusual std errors
-no, all std errors are very small and having values close to each others  
-low std errors are mainly because of the large sample size 
-
-we need non significant chi square 
-
-
-Table1 Participants characteristics 
-
-Since questions are grouped into three domains; cognitive, behavioral and emotional, we applied confirmatory factor analysis. However, the model failed to converge. This raised two question; can we depend on the three domains for score calculation? and should we keep all questions?
-
-
-# Deciding which questions to remove
-
-We applied five methods to determine which questions to remove. The five methods are as follows: 
-
-1- Correlation coefficients with a cut-off of 0.3.[@DiscoveringStatisticsUsing2017] 
-
-
-```{r}  
-
-#-------------------------- look at correlation matrix for all questions----------
-
-# Book : modern psychometrics with R 
-
-all_qu <- polychoric(questions)  # polychoric correlations 
-all_q <- round(all_qu$rho, 2)  # 2 decimal places
-all_q[all_q == 1] <- 0  # convert ones to zeros    
-all_q <- data.frame(all_q)
-
-trial_all <- all_q %>%
-  rownames_to_column('gene') %>%
-  filter_if(is.numeric, all_vars(. < 0.3)) %>%
-  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
-
-
-all_low <- row.names(trial_all) 
-
-#  test assumptions of tetrachoric correlations      Muth?n, B. O., & Hofacker, C. (1988). Testing the assumptions underlying tetrachoric correlations.
-# Psychometrika, 83, 563-578.
-
-
-```
-
-
 ### repeat polychoric correlation based on the remaining 45 questions. 
-
 
 ```{r}
 
 ques45 <- questions %>% 
   dplyr::select(-c(6,9,12,18,45,3,47, 55,61,44,50, 16,17,49,51, 40))
 
-all_qu45 <- polychoric(ques45)  # polychoric correlations 
-all_q45 <- round(all_qu45$rho, 2)  # 2 decimal places
-all_q45[all_q45 == 1] <- 0  # convert ones to zeros    
-all_q45 <- data.frame(all_q45)
-
-trial_all45 <- all_q45 %>%
-  rownames_to_column('gene') %>%
-  filter_if(is.numeric, all_vars(. < 0.3)) %>%
-  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
-
-all_low <- row.names(trial_all45) 
-
-```
-
-
-
-2- Alpha drop, where the overall cronbach alpha of all questions is checked after removal of a single question. Questions which, upon removal, increase the overall cronbach alpha are considered for removal from the score.
-
-
-```{r}
-
-reli <- psych::alpha(questions)
-rel_tot <- reli$total
-
-
-drop <- data.frame(reli$alpha.drop)
-drop <- cbind(row.names(drop), drop)
-drop <- arrange(drop, desc(raw_alpha))[, c(1,2)]
-drop <- drop %>% top_n(8)
-drop <- as.vector(drop[,1])
-
-#drop
-
-```
-
-I think I will neglect the alpha drop method as I will be using omega
-
-
-
-
-3- Minimum residual exploratory factor analysis [@comreyMinimumResidualMethod1962], where questions that didn't load properly on any factor are suggested to be removed (based on the 0.3 criteria for factor loading). We have chosen Ordinary Least Squared/Minres factoring , as it is known to provide results similar to Maximum Likelihood without assuming multivariate normal distribution. In addition, it derives solutions through iterative eigen decomposition like principal axis. We have selected an oblique rotation "oblimin" as we believe that there is correlation in the factors.[@revelleOverviewPsychPackage]. We selected three factors based on scree plot inspection. These factors accounted for 23% of the variance.
-
-
-# minimum residual factor analysis based on the 45 questions 
-
-```{r}
-
-fourfactor45 <- fa(ques45,nfactors = 4,rotate = "oblimin",fm="minres", cor = "poly") 
-
-
-```
-
-low TLI
-
-
-```{r}
-# Now that we've arrived at probable number of factors, let's start off with 3 as the number of factors. In order to perform factor analysis, we'll use psych package's `fa()function. Given below are the arguments we'll supply:
-
-fourfactor <- fa(questions,nfactors = 4,rotate = "oblimin",fm="minres", cor = "poly") 
-
-```
-
-
-
-```{r}
-
-fourfactor_pr <- fa(questions,nfactors = 4,rotate = "promax",fm="minres", cor = "poly") 
-
-fourfactor_ob <- fa(questions,nfactors = 4,rotate = "oblimin",fm="minres", cor = "poly") 
-
-summary(fourfactor_ob)
-
-threefactor <- fa(questions,nfactors = 3,rotate = "oblimin",fm="minres", cor = "poly") 
-
-pr <- data.frame(unclass(print(fourfactor_pr$loadings, cutoff = 0.3)))
-
-ob <- data.frame(unclass(print(fourfactor_ob$loadings, cutoff = 0.3)))
-
-
-pr_missing <- pr %>%
-rownames_to_column('q') %>%
-  filter_if(is.numeric, all_vars(. < 0.3))
-#  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
-
-
-ob_missing <- ob %>%
-rownames_to_column('q') %>%
-  filter_if(is.numeric, all_vars(. < 0.3))
-#  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
-
-
-# missing less than 0.4
-
-ob_missing_4 <- ob %>%
-rownames_to_column('q') %>%
-  filter_if(is.numeric, all_vars(. < 0.4))
-#  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
-
-
-
-# missing less than 0.5
-
-ob_missing_5 <- ob %>%
-rownames_to_column('q') %>%
-  filter_if(is.numeric, all_vars(. < 0.5))
-#  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
-
-ob_missing_5[1]
-
-
-# oblimin and promax are identical in removing the same six variables. 
-
-
-# loadings sorted  
-
-ob_load_sort <- ob %>%
-rownames_to_column('q') %>%
-  mutate(one = ifelse(MR1 > 0.3, 1 , 0), 
-         two = ifelse(MR2 > 0.3, 1 , 0),
-         three = ifelse(MR3 > 0.3, 1 , 0),
-         four = ifelse(MR4 > 0.3, 1 , 0),
-         number =  one + two + three + four,
-         max = pmax(MR1 , MR2 , MR3 , MR4)) %>% 
-  arrange(desc(max))
-
-#  filter(number > 1)
-
-pr_load_sort <- pr %>%
-rownames_to_column('q') %>%
-  mutate(one = ifelse(MR1 > 0.3, 1 , 0), 
-         two = ifelse(MR2 > 0.3, 1 , 0),
-         three = ifelse(MR3 > 0.3, 1 , 0),
-         four = ifelse(MR4 > 0.3, 1 , 0),
-         number =  one + two + three + four,
-         max = pmax(MR1 , MR2 , MR3 , MR4)) %>% 
-  arrange(desc(max))
-
-# cbind(ob_missing$max, pr_missing$max)     monitor factor loadings with the two methods
-
-
-
-# %>% 
-#   filter(number > 1)
-
-# double loadings 
-
-# only 3 questions for oblimin 
-
-ob_dbl_load <- ob_load_sort %>% 
-  filter(number > 1)
-
-ob_factor1 <- ob %>%
-rownames_to_column('q') %>%
-  filter(MR1 > 0.3) %>% 
-  anti_join(ob_dbl_load)
-
-ob_factor2 <- ob %>%
-rownames_to_column('q') %>%
-  filter(MR2 > 0.3) %>% 
-  anti_join(ob_dbl_load)
-
-ob_factor3 <- ob %>%
-rownames_to_column('q') %>%
-  filter(MR3 > 0.3) %>% 
-  anti_join(ob_dbl_load)
-
-ob_factor4 <- ob %>%
-rownames_to_column('q') %>%
-  filter(MR4 > 0.3) %>% 
-  anti_join(ob_dbl_load)
-
-
-dom1 <- questions %>% 
-  dplyr::select( c(Q7, Q16, Q24, Q26, Q28, Q29, Q31, Q33, Q34, Q35, Q36, Q37, Q39, Q42, Q44, Q48, Q49, Q50, Q54, Q55, Q56, Q57, Q58))
-
-dom2 <- questions %>% 
-  dplyr::select( c("Q19", "Q32", "Q38", "Q41", "Q46", "Q47", "Q51", "Q52", "Q53", "Q59", "Q60", "Q61"))
-# it doesn't matter whether u quote or not
-
-
-dom3 <- questions %>% 
-  dplyr::select( c("Q10", "Q11", "Q12", "Q13", "Q18", "Q20"))
-
-dom4 <- questions %>% 
-  dplyr::select( c("Q1", "Q3", "Q5", "Q6", "Q9", "Q15", "Q17", "Q21", "Q23", "Q30", "Q43"))
-
-psych::alpha(dom1)
-psych::alpha(dom2)
-psych::alpha(dom3)
-psych::alpha(dom4)
-
-# poor reliability 
-
-
-# 6 questions for promax
-
-pr_dbl_load <- pr_load_sort %>% 
-  filter(number > 1)
-
-
-
-# questions not loaded properly, these are identical for oblimin and promax
-
-ob_load_missing <- ob_load_sort %>% 
-  filter(number  == 0)
-
-pr_load_missing <- pr_load_sort %>% 
-  filter(number  == 0)
-
-ob_load_missing$q
-
-```
-
-with promax I have six double loadings, but with oblimin, only 3 double loadings 
-for factor loadings, promax is slightly better than oblimin, however, I think that double loading is more important. 
-Thus, I will stick to oblimin. 
-
-
-# polychorial correlations of less than 0.3 with all questions
-
-```{R}
-
-all_low
-
-
-```
-
-only question 27 is common between factor analysis and low polychoric correlations 
-
-```{r}
-
-
-# testing positive definite
-
-# round(eigen(all_qu$rho)$values, 3) < 0
-
-# no negative values
-
-```
-
-what if we have double loadings between a positive and a negative factor ? 
-
-
-```{r}
-
-round(fourfactor$communality, 2)  # communalities by all questions 
-
-# These communalities are simply the sum of the squared loadings and represent
-# the proportion of variance (i.e., squared multiple correlations) explained by the
-# common factors.
-
-
-summary(fourfactor_pr)
-
-factor.plot(fourfactor)
-
-```
-
-I need to understand this plot 
-
-Maximum likelihood yieled TLI, RMSEA and cumulative variance explained almost identical to minimum residual
-I think minimum residual is better since it doesn't assume multivariate normality
-
-
-
-
-
-```{r}
-
-threefactor45 <- fa(ques45,nfactors = 3,rotate = "oblimin",fm="minres", cor = "poly") 
-```
-
-low TLI again 
-
-```{r}
-
-twofactor45 <- fa(ques45,nfactors = 2,rotate = "oblimin",fm="minres", cor = "poly") 
-
-```
-
-even lower TLI 
-
-```{r}
-onefactor45 <- fa(ques45,nfactors = 1,rotate = "oblimin",fm="minres", cor = "poly") 
-
-```
-
-much lower TLI 
-
-
-```{r}
-# I tried to change the rotation but it was useless
-# faPCdirect <- fa.poly(questions, nfactors=3, rotate="oblimin")
-# faPCdirect <- fa.poly(questions, nfactors=4, rotate="oblimin")
-# faPCdirect <- fa.poly(questions, nfactors=5, rotate="oblimin")
-# faPCdirect <- fa.poly(questions, nfactors=6, rotate="oblimin")
-# faPCdirect <- fa.poly(questions, nfactors=12, rotate="oblimin")
-#This function is deprecated, I use fa, with poly argument 
-
-fa.diagram(fourfactor, size = 100, cex = 9, adj = 9)  
-
-
-fap <- fa.parallel.poly(questions)  # this indicates 4 components or 12 factors 
-
-
-four_irt <- irt.fa(questions,nfactors = 4,rotate = "oblimin",fm="minres", cor = "poly")
-four_ml_irt <- irt.fa(questions,nfactors = 4,rotate = "oblimin",fm="ml", cor = "poly")
-
-six_ml_irt <- irt.fa(questions,nfactors = 6,rotate = "oblimin",fm="ml", cor = "poly")
-
-four_irt$fa
-four_ml_irt$fa
-six_ml_irt$fa
-
-# it is worth mentioning that irt.fa function example in psych package gives TL index of only 0.742
-# RMSEA index of 0.131 
-#RMSR = 0.08
-
-# In comparing irt.fa to the ltm function in the ltm package or to the analysis reported in Kamata and Bauer (2008) the discrimination parameters are not identical, because the irt.fa reports them in units of the normal curve while ltm and Kamata and Bauer report them in logistic units. In addition, Kamata and Bauer do their factor analysis using a logistic error model. Their results match the irt.fa results (to the 2nd or 3rd decimal) when examining their analyses using a normal model. (With thanks to Akihito Kamata for sharing that analysis.)
-# 
-# irt.fa reports parameters in normal units. To convert them to conventional IRT parameters, multiply by 1.702. In addition, the location parameter is expressed in terms of difficulty (high positive scores imply lower frequency of response.)
-# 
-
-
-foo <- four_irt$rho
-#fa2irt(four_irt, foo)
-plot.poly(four_irt,  type = "IIC")
-
-# plot 
-# identify items 
-# then select factors 
-# then work on the selected factors 
-print(four_irt)
-
-# Item Response Theory (IRT) models for
-# dichotomous or polytomous items may be found by factoring tetrachoric or polychoric
-# correlation matrices and expressing the resulting parameters in terms of location and discrimination using irt.fa
-```
-
-
-irt.fa reports parameters in normal units. To convert them to conventional IRT parameters, multiply by 1.702. In addition, the location parameter is expressed in terms of difficulty (high positive scores imply lower frequency of response.
-
-```{r}
-
-
-#Promax : 24 %
-#threefactor$Vaccounted
-#print(threefactor$loadings,cutoff = 0.3)
-
-# Now we need to consider the loadings more than 0.3 and not loading on more than one factor. Note that negative values are acceptable here. So let's first establish the cut off to improve visibility:
-
-# 15 questions are not significant.. however, there is no double loading
- 
-
-# questions that need a second look
-# Q1,2,5,7,9,14 ,15,16,19, 25, 26, 27, 40, 52, 55
-
-# Next, we'll consider '4' factors:
-
-fourfactor <- fa(questions,nfactors = 4,rotate = "oblimin",fm="minres")
-#print(fourfactor$loadings,cutoff = 0.3)
-
-# 16 questions are not significant 
-
-fivefactor <- fa(questions,nfactors = 5,rotate = "oblimin",fm="minres")
-
-#print(fivefactor$loadings,cutoff = 0.3)
-
-# 15 questions are not significant
-
-#fa.diagram(threefactor)
-
-# due to the large number of factors, the graph is not clear 
-
-three <- threefactor$loadings    # I decided to use three factors, the choice is partly supported by PCA as will be presented below 
-
-
-three <- data.frame(unclass(three))
-
-three_0.3 <- three %>%
-  rownames_to_column('gene') %>%
-  filter_if(is.numeric, all_vars(. < 0.3)) %>%
-  column_to_rownames('gene')
-three_out <- row.names(three_0.3)
-#three_out
-
-```
-
-Since the variance explained was too small, we extracted four- and five-factor solutions as well. However, these solutions improved the percentage of variance explained only slightly. Thus, we decided to stick to the three factor method. Broadly speaking, the pattern matrix in general contained moderate loadings on each factor with almost no cross-loadings. Specifically, loadings for each factor ranged from 0.3 (the predefined cut-off) to `r max(three)` 
-
-
-4- Factor analysis using maximum likelihood method, where questions are suggested to be removed if they load poorly on factors( based on 0.3 criteria)
-
-5 - principal component analysis (again based on 0.3 criteria) 
-
-In order for a question to be removed, three criteria should be fulfilled. First, the question should be extracted by at least three out of the five methods. Second, one of the methods should be minimum residual factor analysis, since we consider it as the most accurate method. Last, the principal investigator have to approve question removal. 
-
-
-It is worth noting that we couldn't find specific guidelines or criteria to remove questions based upon. That's why we are adopting our own criteria, trying to reach a valid statistical decision in concordance with principal investigator's opinion.    
-
-```{r}
-# -------------------- Factor Analysis Model Adequacy -----------------------------
-
- #summary(threefactor)
-
-# The root mean square of the residuals (RMSR) is  0.04 
-# This is acceptable as this value should be close to 0.
-
-# RMSEA index =  0.037  
-# This value shows good model fit as it's below 0.05
-
-# Finally, the Tucker-Lewis Index (TLI) is 0.811 - a somewhat low value considering it's less than 0.9  
-
-
-# ------------------------------ PCA -------------------   
-
-#res.pca = PCA(questions, scale.unit=TRUE, ncp = 5, graph=F )
-
-# I kept the default = 5, because I think starting from this number, the fraction sum up to 1
-
-#fviz_screeplot(res.pca, addlabels = TRUE, ylim = c(0, 20))
-# This supports using 2 or 3 factors
-
-
-```
-
-
-
-```{r}
-#var <- get_pca_var(res.pca)
-
-# question to consider removing
-# pca_1 <- data.frame(var$coord)
-# 
-# 
-# q_remove_0.35 <- pca_1 %>%
-#   rownames_to_column('gene') %>%
-#   filter_if(is.numeric, all_vars(. < 0.35)) %>%
-#   column_to_rownames('gene')
-# # row.names(q_remove_0.35)
-# # here we mention the questions that have loadings less than 0.35 
-# 
-# q_remove_0.3 <- pca_1 %>%
-#   rownames_to_column('gene') %>%
-#   filter_if(is.numeric, all_vars(. < 0.3)) %>%
-#   column_to_rownames('gene')
-# pca_0.3 <- row.names(q_remove_0.3)   # here we select the questions with loadings less than 0.3 
-
-```
-
-
-```{r}
-#pca_0.3
-```
-
-
-```{r}
-
-# ------------- another PCA trial from ANDY ----------------------   
-
-# when conducting principal components analysis we begin by
-# establishing the linear variates within the data and then decide how many of these variates
-# to retain (or 'extract'). Therefore, our starting point is to create a principal components
-# model that has the same number of factors as there are variables in the data: by doing this
-# we are just reducing the data set down to its underlying factors.
-
-# # there is some evidence that it is accurate when the number of variables is less than
-# 30 and the resulting communalities (after extraction) are all greater than .7. Kaiser's
-# criterion can also be accurate when the sample size exceeds 250 and the average communality
-# is greater than or equal to .6. In any other circumstances you are best advised
-# to use a scree plot provided the sample size is greater than 200
-
-# we dont meet these requirments here ... This is another indication that we should reduce the number of variables that we have.  
-
-# pc1 <-  principal(questions, nfactors = length(questions), rotate = "none")
-# #plot(pc1$values, type = "b")    # here the 3 factors idea is supported
-# 
-# pc2 <-  principal(questions, nfactors = 3, rotate = "none")
-
-# -----------------------------    factor analysis with stats package ----------------------
-
-# It is based on maximum likelihood
-# 
-# bas <- factanal(questions, 3)    # I depended on pervious insights to select 3 as the number of factors 
-# bas <- data.frame(unclass(bas$loadings))
-# 
-# fact_anal <- bas %>%
-#   rownames_to_column('gene') %>%
-#   filter_if(is.numeric, all_vars(. < 0.3)) %>%
-#   column_to_rownames('gene')
-# f_anal <- row.names(fact_anal)
-```
-
-
-
-```{r}
-#f_anal
-```
-
-
-
-```{r}
-# _______________________________ deciding which questions to remove _____________________________
-
-#three_out # factor analysis from psych package
-#f_anal   # through maximum likelihovod x
-#pca_0.3   # pca 
-  # 8 questions with the highest cronbach alpha rise upon removal 
-
-# myList <- list(three_out, f_anal, pca_0.3, drop, all_low)
-# 
-# myList <- unlist(myList) # I think we should get the 5s, 4s and 3s
-
-#table(myList)
-```
-
-# Factor scores 
-
-```{r}
-
-q_scores <- fa(questions, nfactors = 4, rotate = "oblimin", cor = "poly", fm = "minres", scores = "regression")
-
-
-dim(q_scores$scores)
-# I am not sure how to use the scores
-# Care
-# is advised with using the factor scores for further analyses since the factor scores
-# are not unique (due to factor indeterminacy, i.e., the factors cannot be determined
-# exactly from the manifest variables)
-```
-
-```{r}
-Rdep <- polychoric(questions)$rho
-evals <- eigen(Rdep)$values
-scree(Rdep, factors = FALSE)
-
-
-
-Rdep45 <- polychoric(ques45)$rho
-evals <- eigen(Rdep45)$values
-scree(Rdep45, factors = FALSE)
-
-
-```
-
-maybe the best choice is 4 factors 
-The horizontal line is the eigenvalue of 1
-
-
-# variance explained 
-
-```{r}
-
-sum((evals/sum(evals)*100)[1:4])
-```
-This is strange, this variance explained in this method is higher than the cumulative variance explained reported in psych model. 
-
-
-# parallel analysis 
-
-```{r}
-set.seed(123)
-par_pca <- fa.parallel(questions, fa = "pc", cor = "poly",fm = "minres")
-
-par_fa <- fa.parallel(questions, fa = "fa", cor = "poly",fm = "minres")
-
-# both shows the eigen values for both PCA and prinicipal factors 
-```
-
-Note that as Revelle (2015,
-p. 176) points out, parallel analysis is partially sensitive to sample size in that for
-large samples (as in our example), the eigenvalues of random factors will tend to be
-very small and thus the number of components or factors will tend to be more than
-using other rules.
-
-In addition, results here change greatly if seed is not adjusted 
-
-# very simple structure
-
-```{r}
-qvss <- vss(Rdep, fm = "minres", n.obs = nrow(questions), plot = T)
-qvss
-```
-
-The Velicer MAP achieves a minimum of 0.01  with  4  factors 
-
-
-# assess number of factors by model fit
-
-```{r}
-fadep <- fa(questions, 4, cor = "poly", fm = "minres")
-summary(fadep)
-
-```
-
-RMSEA : 0.074 fair fit
-TLI : 0.637 : very low 
-
-
-
-The
-psych package offers the convenience function nfactors, which fits a sequence
-of EFA models with varying p and prints out several criteria. Below we specify a
-maximum of eight factors (output not shown here).
-
-
-
-
-```{r}
-qnf <- nfactors(questions, n = 8, fm = "minres", cor = "poly", rotate = "oblimin")
-qnf
-
-# I didn't understand how to use it 
-library(nFactors)
-
-?nFactors
-
-# read more about this 
-```
-
-# using the bifactor model
-### for the 45 questions
-
-```{r}
-bi45 <- fa(ques45,nfactors = 4,rotate = "bifactor",fm="minres", cor = "poly")   # very low TLI
-summary(bi_bifactor)
-
-```
-
-low TLI(0.698) and it doesn't change with changing rotation method 
-
-```{r}
-
-OM45_3 <- omega(m = ques45, nfactors = 3, poly = T, n.obs = 950, s1 = F, digits = T)
-summary(OM45_3)
-
-OM45_2 <- omega(m = ques45, nfactors = 2, poly = T, n.obs = 950, s1 = T)  # diagnostics are slightly worse, but makes more sense  
-summary(OM45_2)
-
-omegaSem(ques45,n.obs=950, poly = T)
-
-
 ques44 <- questions %>% 
   dplyr::select(-c(6,9,10, 11,12,18,45,3,47, 55,44,50, 16,17,49,51, 40))
 
-OM44_3 <- omega(m = ques44, nfactors = 3, poly = T, n.obs = 950, s1 = T, digits = T)
-summary(OM44_3)
-
-OM44_2 <- omega(m = ques44, nfactors = 2, poly = T, n.obs = 950, s1 = F, digits = T)
-summary(OM44_2)
-
-omegaSem(ques44, poly = T, n.obs = 950)
-
 ```
 
-3 factors, but many cross loadings 
-omega for the third factor is low 
+# MIRT
 
+### modern psychometric with R book
 
-### Revelle answer for using omega
-
-```{r}
-# https://stats.stackexchange.com/questions/302078/correct-procedure-to-calculate-mcdonalds-omega-in-r-using-the-psych-package 
-
-
-# find 3 factors from this set
-f3 <- fa(ques45,3, cor = "poly", rotate = "oblimin")
-#extract the items that have their highest loadings on each factor
-keys <- factor2cluster(f3)
-#make this a list of five different keys to be easier to handle
-keys.list <- keys2list(keys)
-
-#now, for each of the five factors, expressed as scoring keys
-#find alpha  (by specifying the keys, we are also specifying the direction to score the item
-
-alphaf1 <- psych::alpha(ques45,keys.list[1])
-alphaf2  <- psych::alpha(ques45, keys.list[2])
-alphaf3  <- psych::alpha(ques45, keys.list[3])
-
-# etc
-
-#find omega  (we need to select just the items
-select1 <- selectFromKeys(keys.list[1])
-select2 <- selectFromKeys(keys.list[2])
-select3 <- selectFromKeys(keys.list[3])
-
-#now, find omega for each subset of items
-omf1 <- omega(ques45[select1])
-omf2 <- omega(ques45[select2])
-omf3 <- omega(ques45[select3])
-
-```
-
-
-# try with the 2 groups 
+##### Dimentionality assessment
 
 ```{r}
-# https://stats.stackexchange.com/questions/302078/correct-procedure-to-calculate-mcdonalds-omega-in-r-using-the-psych-package 
+library("MPsychoR")
+library("mirt")
+library("Gifi")
+dim_ques <- princals(ques45)
+plot(dim_ques, main = "Irrational thoughts loadings")
 
 
-# find 2 factors from this set
-f2 <- fa(ques45,2, cor = "poly", rotate = "oblimin")
-#extract the items that have their highest loadings on each factor
-keys <- factor2cluster(f2)
-#make this a list of five different keys to be easier to handle
-keys.list <- keys2list(keys)
-
-#now, for each of the five factors, expressed as scoring keys
-#find alpha  (by specifying the keys, we are also specifying the direction to score the item
-
-alphaf1 <- psych::alpha(ques45,keys.list[1])
-alphaf2  <- psych::alpha(ques45, keys.list[2])
-
-# etc
-
-#find omega  (we need to select just the items
-select1 <- selectFromKeys(keys.list[1])
-select2 <- selectFromKeys(keys.list[2])
-
-#now, find omega for each subset of items
-omf1 <- omega(ques45[select1])
-omf2 <- omega(ques45[select2])
-
-```
-
-# two factors with the 44 questions 
-
-```{r}
-
-# https://stats.stackexchange.com/questions/302078/correct-procedure-to-calculate-mcdonalds-omega-in-r-using-the-psych-package 
-
-# find 2 factors from this set
-f2 <- fa(ques44,2, cor = "poly", rotate = "oblimin")
-#extract the items that have their highest loadings on each factor
-keys <- factor2cluster(f2)
-#make this a list of five different keys to be easier to handle
-keys.list <- keys2list(keys)
-
-#now, for each of the five factors, expressed as scoring keys
-#find alpha  (by specifying the keys, we are also specifying the direction to score the item
-
-alphaf1 <- psych::alpha(ques44,keys.list[1])
-alphaf2  <- psych::alpha(ques44, keys.list[2])
-
-# etc
-
-#find omega  (we need to select just the items
-select1 <- selectFromKeys(keys.list[1])
-select2 <- selectFromKeys(keys.list[2])
-
-#now, find omega for each subset of items
-omf1 <- omega(ques44[select1])
-omf2 <- omega(ques44[select2])
-
-
-# omega_total is for the general construct. What you need to specify is whether you are trying to find the general for all of your items, or just the subsets of your items. I took your original question to mean you were trying to find the omega_hierarchical for each subset. If you want 5 coefficient alphas, then getting 5 omegas makes sense. But what you will be doing (as I did in my examples) is divide each construct into a general (of which there will be 5) and lower level (at least 3 for each would be good 
-
-# Alpha is insensitive to the internal structure of a test. It just reflects the average correlation of the items and the number of items. Omega_h is sensitive to the structure. It is "model based" and will vary by your model
-
-
-foooo <- fa(ques44, nfactors = 4,  cor = "poly" , rotate = "bifactor")
-fa.diagram(foooo$loadings, g = T)
+# checking before questions removal 
+# dim_ques_61 <- princals(questions)
+# plot(dim_ques_61, main = "Irrational thoughts loadings")
 
 
 ```
 
 
-2 factors, everything is perfect but I need to read more about this. 
+unidimensionality is violated
 
-
+### check number of factors 
 
 ```{r}
-
-bi_bifactor <- fa(questions,nfactors = 4,rotate = "bifactor",fm="minres", cor = "poly")   # very low TLI
-summary(bi_bifactor)
-
-
-
-bi_bent <- fa(questions,nfactors = 4,rotate = "bentlerT",fm="minres", cor = "poly")   # very low TLI
-summary(bi_bent)
-
-
-bi_quar <- fa(questions,nfactors = 4,rotate = "biquartimin",fm="minres", cor = "poly")   # very low TLI
-summary(bi_quar)
-
-
-#In fact, TLI isn't changed with different types of rotation
-
-OM_3 <- omega(m = questions, nfactors = 3, poly = T, n.obs = 950, s1 = T)
-summary(OM)
-
-
-OM_2 <- omega(m = questions, nfactors = 2, poly = T, n.obs = 950, s1 = T)  # diagnostics are worse 
-summary(OM_2)
-
-
-bifactor <- fa(qqqq,nfactors = 2,  fm="minres", cor = "poly", rotate = "biquartimin")   # very low TLI
-summary(bifactor)
-
-
-omega(qqqq,fm='ml',nfactors = 2)
+nfactors(ques45, n = 4, cor = "poly")
 
 ```
 
-# estimating omega hierarchial using CFA 
+MAP : 2 factors 
+VSS : 2 factors 
+BIC : 4 factors 
 
-```{r}
 
-# The omegaSem function will do an exploratory analysis and then take the highest loading
-# items on each factor and do a confirmatory factor analysis using the sem package
+### scree plot
 
-omegaSem(questions,n.obs=950, poly = T)
-
-qqqq <- questions %>% 
-  dplyr::select(-c(Q16, Q17, Q49, Q51, Q8, Q12, Q6, Q23, Q3, Q61))
-
-omegaSem(qqqq,n.obs=950, poly = T)
-
-Omm_2 <- omega(m = qqqq, nfactors = 2, poly = T, n.obs = 950, s1 = T)  # diagnostics are worse 
-summary(Omm_2)
-
-
-
-```
-
-
-According to the previously mentioned criteria, we removed seven questions, leaving a total of 54 questions.
-
-
-
-
-
-
-# removing questions
-
-```{r}
-
-ques <- questions %>% 
-  dplyr::select(- c(Q45, Q2, Q40, Q14, Q4, Q27))
-
-fourfactor_rem <- fa(ques,nfactors = 4,rotate = "oblimin",fm="minres", cor = "poly") 
-
-summary(fourfactor_rem)
-
-```
-
-
-
-
-cumulative variance explained is 0.36  (improved)
-
-TLI : 0.657   slightly improved
-RMSEA: 0.076
-RMSR : 0.04 
-
-
-
-
-```{r}
-
-ques_dbl <- questions %>% 
-  dplyr::select(- c(Q45, Q2, Q40, Q14, Q4, Q27, Q22, Q8, Q25))
-
-fourfactor_rem_dbl <- fa(ques,nfactors = 4,rotate = "oblimin",fm="minres", cor = "poly") 
-summary(fourfactor_rem)
-
-```
-
-almost nothing changed except for TLI that increase to 0.668
-
-# removing all questions less than 0.4 (24 questions)
-
-```{r}
-
-
-ques_0.4 <- questions %>% 
-  dplyr::select(- c(Q1, Q2, Q3, Q4, Q7, Q8, Q10, Q12, Q14, Q15, Q16, Q18, Q19 ,Q21, Q25, Q27, Q38, Q40, Q41, Q43,Q45 ,Q46, Q51, Q55))
-
-fourfactor_rem_0.4 <- fa(ques_0.4,nfactors = 4,rotate = "oblimin",fm="minres", cor = "poly") 
-summary(fourfactor_rem)
-
-# TLI only 0.72
-
-threefactor_rem_0.4 <- fa(ques_0.4,nfactors = 3,rotate = "oblimin",fm="minres", cor = "poly") 
-summary(fourfactor_rem)
-
-# TLI 0.706
-```
-
-# removing questions less than 0.5(41 questions)
-
-```{r}
-
-ob_missing_5[1]
-
-ques_0.5 <- questions %>% 
-  dplyr::select(- c(Q1,Q2,Q3,Q4,Q5,Q7,Q8,Q10,Q11,Q12,Q13,Q14,Q15,Q16,Q17,Q18,Q19,Q20,Q21,Q22,Q23,Q25,Q26,Q27,Q32,Q33,Q36,Q38,Q40,Q41,Q43,Q45,Q46,Q47,Q49,Q50,Q51,Q52, Q54, Q55,Q56))
-
-fourfactor_rem_0.5 <- fa(ques_0.5,nfactors = 4,rotate = "oblimin",fm="minres", cor = "poly") 
-summary(fourfactor_rem)
-
-
-# TLI 0.8 
-
-threefactor_rem_0.5 <- fa(ques_0.5,nfactors = 3,rotate = "oblimin",fm="minres", cor = "poly") 
-
-#TLI 0.79
-
-
-```
-
-
-
-# three factors 
-
-```{r}
-
-ques_dbl <- questions %>% 
-  dplyr::select(- c(Q45, Q2, Q40, Q14, Q4, Q27, Q22, Q8, Q25))
-
-fourfactor_rem_dbl <- fa(ques,nfactors = 3,rotate = "oblimin",fm="minres", cor = "poly") 
-summary(fourfactor_rem)
-
-```
-TLI decreased
-
-# five factors 
-
-```{r}
-
-ques_dbl <- questions %>% 
-  dplyr::select(- c(Q45, Q2, Q40, Q14, Q4, Q27, Q22, Q8, Q25))
-
-fourfactor_rem_dbl <- fa(ques,nfactors = 5,rotate = "oblimin",fm="minres", cor = "poly") 
-summary(fourfactor_rem)
-
-```
-
-again TLI is worse
-
-
-```{r}
-#   _________________ repeating analysis after removal of questions _______________________
-
-# excluded 1, 2,  7,  15,25, 40,52 
-
-questions <- SurveyData[, 2:62]
-
-questions <- questions[, -c(1, 2, 7, 15, 25, 40, 52)]
-
-total_mean <- data.frame(cbind(SurveyData[, 1], rowMeans(questions), SurveyData$father_edu_combined, SurveyData$income_category_comb, SurveyData$sex))
-
-colnames(total_mean) <- c("ID", "Mean_score", "father_education", "income_category", "sex")
-
-#head(total_mean, 10)
-```
-
-```{r}
-# https://rpubs.com/Pun_/Exploratory_factor_Analysis 
-
-#fa(r = data, nfactors = 3, rotate = "oblimin", fm = "minres")
-
-parallel<-fa.parallel(questions, fm='minres', fa='fa')
-
-
-parallel<-fa.parallel(ques45, fm='minres', fa='fa', cor = "poly")
-
-```
-
-Scree-plot from minimum residual factor analysis 
-
-```{r}
-fviz_screeplot(res.pca, addlabels = TRUE, ylim = c(0, 20))
-# This supports using 2 or 3 factors
-```
-
-Scree-plot from Principle Component Analysis
-
-
-Based on the scree-plots and the principle investigator's choice, we have chosen to group questions into three domains. We used the minimum residual factor analysis method to group questions into their corresponding domains according to factor loading. Grouping of questions was different from the principal investigator's initial domains grouping (cognitive, behavioral and emotional). This led us to formulate three novel domains; Demand, fear and Accuse. Each one of the novel domains contains questions that belongs to the three initial domains. 
-
-~~The first factor, Guilt and Worry, consisted of items pertaining to parents' concerns about their children's current and future well-being (e.g., I worry that my child's illness will worsen/return; I wake up during the night and check on my child.) as well as personal guilt (e.g., I worry that I may be responsible for my child's illness in some way.).~~
-
-
-```{r}
-
-### (((figure x to be included shows the interaction between the initial and novel domains)))
-```
-
-~~The items associated with each factor are listed in
-Table II along with the corresponding factor loadings,
-eigenvalues, and percent of variance explained. For
-subsequent analyses, scores for each factor were calculated
-by adding the item responses and dividing by the
-number of items on each factor (see Table III for scale
-descriptives~~
-
-
-### Internal Consistency
-
-
-We then applied cronbach alpha for testing reliability of questions for each domain separately. Alpha is good for the first two domains; demand and bear. For Accuse domain, alpha is acceptable.
-
-
-
-```{r}
-
-# --------------------- analysis per cluster -----------------------------
-
-target1 = c(
- 9, 24, 28, 29, 31, 33, 34, 35, 36, 37, 39, 42, 44, 54, 56, 57, 58
-) + 1 ## +1 coz ID col
-
-factor_1_q = c(1, target1)
-
-factor1 <- SurveyData[,factor_1_q]
-
-factor1$rowMean <-rowMeans(factor1[,2:ncol(factor1)])  
-
-# 16 questions
-
-target2 = c(
-  5, 14, 17, 21, 23, 27, 30, 32, 38, 41, 43, 45, 46, 47, 51, 53, 59, 60, 61, 48, 49, 50 # last 3 questions are transfered from domain 1
-) + 1 ## +1 coz ID col
-factor_2_q = c(1, target2)
-
-factor2 <- SurveyData[,factor_2_q]
-
-factor2$rowMean <-rowMeans(factor2[,2:ncol(factor2)])  
-
-# 22 questions
-
-target3 = c(
-  3, 8, 11, 12, 18, 20, 22, 26, 4, 6, 10, 13, 16, 19, 55) + 1
-factor_3_q = c(1,target3) ## +1 coz ID col
-
-factor3 <- SurveyData[,factor_3_q]
-
-factor3$rowMean <-rowMeans(factor3[,2:ncol(factor3)])  
-# 16 questions 
-
-### add means to the original file, however, this is the mean after removing the questions
-
-SurveyData$factor1_Mean <-rowMeans(SurveyData[,target1])
-SurveyData$factor1_Sum <-rowSums(SurveyData[,target1])
-SurveyData$factor2_Mean <-rowMeans(SurveyData[,target2])
-SurveyData$factor2_Sum <-rowSums(SurveyData[,target2])
-SurveyData$factor3_Mean <-rowMeans(SurveyData[,target3])
-SurveyData$factor3_Sum <-rowSums(SurveyData[,target3])
-
-
-SurveyData$demand <- SurveyData$factor1_Mean
-SurveyData$bear <- SurveyData$factor2_Mean
-SurveyData$accuse <- SurveyData$factor3_Mean
-
-SurveyData$demand_sum <- SurveyData$factor1_Sum
-SurveyData$bear_sum <- SurveyData$factor2_Sum
-SurveyData$accuse_sum <- SurveyData$factor3_Sum
-
-
-demand_factor<-data.matrix(factor1[,-c(1,ncol(factor1))], rownames.force = NA)
-bear_factor<-data.matrix(factor2[,-c(1,ncol(factor2))], rownames.force = NA)
-accuse_factor<-data.matrix(factor3[,-c(1,ncol(factor3))], rownames.force = NA)
-
-
-cor_demand_factor = round(cor(demand_factor),2)
-trial <- cor_demand_factor
-trial[trial == 1] <- 0
-trial <- data.frame(trial)
-
-#max(trial) ## note that the maximum correlation in this factor is 0.45
-
-trial <- trial %>%
-  rownames_to_column('gene') %>%
-  filter_if(is.numeric, all_vars(. < 0.3)) %>%
-  column_to_rownames('gene')
-demand_low <- row.names(trial)
-
-# I have found here 1 out of 17 items less than 0.3 
-
-
-cor_bear_factor = round(cor(bear_factor),2)
-trial <- cor_bear_factor
-trial[trial == 1] <- 0
-trial <- data.frame(trial)
-
-#max(trial) ## note that the maximum correlation in this factor is 0.46
-
-trial <- trial %>%
-  rownames_to_column('gene') %>%
-  filter_if(is.numeric, all_vars(. < 0.3)) %>%
-  column_to_rownames('gene')
-bear_low <- row.names(trial)
-
-# I have found here 10 out of 22 items less than 0.3 
-
-
-cor_accuse_factor = round(cor(accuse_factor),2)
-trial <- cor_accuse_factor
-trial[trial == 1] <- 0
-trial <- data.frame(trial)
-
-#max(trial) ## note that the maximum correlation in this factor is 0.41
-
-trial <- trial %>%
-  rownames_to_column('gene') %>%
-  filter_if(is.numeric, all_vars(. < 0.3)) %>%
-  column_to_rownames('gene')
-accuse_low <- row.names(trial)
-# I have found here 7 out of 15 items less than 0.3 
-
-```
-
-
-
-![](cronbach.png)
-
-
-```{r}
-a_total <- alpha(questions)
-c_t <- a_total$total[1:2]
+```{R}
+Rdep <- polychoric(ques45)$rho
+evals <- eigen(Rdep)$values
+scree(Rdep, factors = FALSE)
 
 ```
 
 
 ```{r}
 
-a_dem <- alpha(demand_factor)
-
-c_1 <- a_dem$total[1:2]
-
-
+plot(dim_ques, "screeplot")
 ```
+
+2 factors 
 
 
 
 ```{r}
-a_bear <- alpha(bear_factor)
-c_2 <- a_bear$total[1:2]
+fa.parallel(ques45, cor = "poly")
+
 
 ```
 
+### IFA method 
+
+```{r}
+# mirt fits a maximum likelihood (or maximum a posteriori) factor analysis model to any mixture of dichotomous and polytomous data under the item response theory paradigm. Thus I don't have to specify "poly"
+fitifa1 <- mirt(ques45, 1, verbose = FALSE)
+fitifa2 <- mirt(ques45, 2, verbose = FALSE, TOL = 0.001)
+anova(fitifa1, fitifa2, verbose = FALSE)
 
 
+
+fitifa4 <- mirt(ques45, 4, verbose = FALSE, TOL = 0.001)
+anova(fitifa2, fitifa4, verbose = FALSE)
+
+```
+AIC BIC and log likelihood changed dramatically when using 2 factors instead of 1 
+
+this is also true when comparing two and four factors, I may consider.. However, maybe this is because of the large sample size 
+
+
+
+
+##### I have chosen this method since Dave suggested using M2 
 
 ```{r}
 
+mod_graded <- mirt(ques45, 2, itemtype = "graded")
+mod_gpcm <- mirt(ques45, 2, itemtype = "gpcm")
+# mod_pc <- mirt(ques45, 2, itemtype = "PC3PL") Partially compensatory models can only be estimated within a confirmatory model
+#mod_ggum <- mirt(ques45, 2, itemtype = "ggum")  not used. check MIRT word document 
+#mod_seq <- mirt(ques45, 2, itemtype = "sequential", TOL = 0.001) # not used, check MIRT word document
+#mod_spline <- mirt(ques45, 2, itemtype = "spline") # no restrictions on the model regarding maths, over sophisticated 
 
-a_accuse <- alpha(accuse_factor)
+stat_graded <- M2(mod_graded) # didn't use type C2 since I have too many dfs 
+stat_gpcm <- M2(mod_gpcm)
+#stat_ggum <- M2(mod_ggum , type = 'C2')
+#stat_seq <- M2(mod_seq , type = 'C2')
+#stat_spline <- M2(mod_spline , type = 'C2')
 
-c_3 <- a_accuse$total[1:2]
+```
 
-Domains <- c("Demand", "Bear", "Accuse")
+as per the modern psychometrics book 
+For the CFI, we can use the same 0.95 fit
+cutoff as in CFA/SEM. For the RMSEA, the CFA/SEM cutoff was 0.05 for a good
+fitting model. In IRT, it is suggested to use 0.05/k (with k being the number of
+categories per item) as fit cutoff.
 
-rmdtable <- function(df){
+
+https://groups.google.com/forum/#!topic/mirt-package/gy63tCz2W98   ( same as SEM, 0.9 for CFI and 0.05 for RMSEA)
+
+Do you have a large sample? If so could be that small differences in expected vs observed response freqs are causing significant p values even though magnitude of misfit is not that big per empirical item plots (and S-X2 RMSEA) https://groups.google.com/forum/#!searchin/mirt-package/M2|sort:date/mirt-package/ZWFimGtUEsI/MXx6pXoaBgAJ 
+
  
-  bes <- autofit(theme_vanilla(flextable(head(df))))
+### item fit 
 
-bes <- bg(bes, bg = "blue", part = "header")
-bes <- color(bes, color = "white", part = "header")
-
-#bes <- color(bes, i = ~ col < 0.05, j = ~ col, color = "red")
-
-return(bes) 
-}
-
-c_alpha <- cbind(Domains, rbind(c_1, c_2, c_3))
-
-
-desc_data <- SurveyData %>% 
-  dplyr::select(demand, bear, accuse) %>%
-    summarise_all(c(mean = mean,
-                    sd = sd,
-                    min = min,
-                    max = max
-                    #median = interp(~median(var, na.rm = T), var = as.name(field)))
-                    ))
-
-dsc_d <- as.matrix(rbind(desc_data[,c(1,4,7,10)]))
-
-dsc_b <- as.matrix(rbind(desc_data[,c(2,5,8,11)]))
-
-dsc_a <- as.matrix(rbind(desc_data[,c(3,6,9,12)]))
-
-dsc <- data.frame(rbind(dsc_d, dsc_b, dsc_a))
-
-colnames(dsc) <- c("Mean", "SD", "Min", "Max")
-
-rmdtable(cbind(c_alpha, dsc))
-
-foo <- SurveyData %>% 
-  dplyr::select(demand, bear, accuse)
-
-library(funModeling)
-
-#plot_num(foo)
-#rmdtable(profiling_num(foo))
-```
-
-
-Table  Descriptive Statistics and Internal Consistency of the irrational believes scale
-
-
-
-Next, we investigated whether there are correlations between the three domains. As expected, the three factors were inter correlated. Specifically, the bear factors was moderately and positively inter correlated with both demand and accuse factors (r ranged from .53 through .65; see Table).
+##### graded 
 
 ```{r}
+ifit_ques45_graded <- mirt::itemfit(mod_graded)
 
-# correlation matrix
-
-cor_data <- round(fourfactor_ob$Phi, 3)
-
-lower.tri(cor_data, diag = F)
-
-upper<-cor_data
-upper[upper.tri(cor_data, diag = F)]<-""
-upper<-as.data.frame(upper)
-upper
-
-# http://www.sthda.com/english/wiki/elegant-correlation-table-using-xtable-r-package?utm_content=bufferff0f5&utm_medium=social&utm_source=twitter.com&utm_campaign=buffer 
-
-
-cor_data <- cor_data[lower.tri(cor_data)]
-
-cor_data <- SurveyData %>% 
-  dplyr::select(demand, bear, accuse)
-res.cor <- correlate(cor_data) %>% 
-  shave()
-
-colnames(res.cor)[1] <- "Domain"
-
-rmdtable(res.cor)
+ifit_ques45_graded[ifit_ques45[, 5] < 0.05, ] ## misfitting items
 
 ```
 
-Table  Pearson Correlations Between domains of irrational believes scale. 
+##### gpcm 
 
+```{r}
+ifit_ques45_gpcm <- mirt::itemfit(mod_gpcm)
 
+ifit_ques45_gpcm[ifit_ques45[, 5] < 0.05, ] ## misfitting items
+
+```
 
 
 ```{r}
+summary(mod_graded, rotate = "oblimin")
 
-# General interpretation
-
-#Although very popular, Cronbach's alpha (1951) underestimates the reliability of a test and over estimates the first factor saturation.
-
-# alpha (Cronbach, 1951) is the same as Guttman's lambda3 (Guttman, 1945)
-
-#Perhaps because it is so easy to calculate and is available in most commercial programs, alpha is without doubt the most frequently reported measure of internal consistency reliability. Alpha is the mean of all possible split half reliabilities (corrected for test length). For a unifactorial test, it is a reasonable estimate of the first factor saturation, although if the test has any microstructure (i.e., if it is "lumpy") coefficients beta (Revelle, 1979; see ICLUST) and omega_hierchical (see omega) are more appropriate estimates of the general factor saturation. omega_total (see omega) is a better estimate of the reliability of the total test.
-
-# Guttman's Lambda 6 (G6) considers the amount of variance in each item that can be accounted for the linear regression of all of the other items (the squared multiple correlation or smc), or more precisely, the variance of the errors
-
-# The squared multiple correlation is a lower bound for the item communality and as the number of items increases, becomes a better estimate.
-
-
-# thus we will apply omega test 
-# however, since we will not depend on the clusters formed by factor analysis and we will depend on the investigators clusters, we will focus only on omega total 
-#ome <- omega(cognitive_factor, plot = F)
-
-#om_cog <- as.data.frame(ome$omega.tot )
-#colnames(om_cog) <- "omega total"
-#om_cog
-
-# omega total is relatively high
-
-
-#ome <- omega(emotional_factor, plot = F)
-
-#om_emot <- as.data.frame(ome$omega.tot )
-#colnames(om_emot) <- "omega total"
-#om_emot
-# omega total is relatively high
-
-
-#ome <- omega(behavioural_factor, plot = F)
-
-#om_bhv <- as.data.frame(ome$omega.tot )
-#colnames(om_bhv) <- "omega total"
-#om_bhv
-# omega total is relatively high
 
 ```
+
+```{R}
+itemplot(mod_graded, 3, main = "ICS addit3",
+rot = list(xaxis = -70, yaxis = 50, zaxis = 10))
+
+```
+
+```{r}
+coef(mod_graded)
+
+```
+### multidimentional item location 
+
+```{r}
+head(MDIFF(mod_graded))
+
+```
+
+### person paramegters 
+
+```{r}
+
+head(fscores(mod_graded))
+
+```
+### residuals
+
+```{r}
+
+res <- residuals(mod_graded, type = "LDG2", digits = 4, df.p = T)
+
+```
+
+# TRY after removal 2 questions
+
+```{R}
+ques43_irt <- ques45 %>% 
+  dplyr::select(- c(40,44))
+
+mod_graded_43 <- mirt(ques43_irt, 2, itemtype = "graded")
+
+stat_graded_43 <- M2(mod_graded_43) # didn't use type C2 since I have too many dfs 
+
+```
+
+# Try after removal 20 questions 
+
+```{r}
+ques19_irt <- ques45 %>% 
+  dplyr::select(- c(20:61))
+
+mod_graded_19 <- mirt(ques19_irt, 1, itemtype = "graded")
+
+stat_graded_19 <- M2(mod_graded_19) # didn't use type C2 since I have too many dfs 
+
+```
+
+
+```{r}
+
+plot(mod_graded, type = "info", main = "Item Information")
+
+# This plot (not shown here) tells us in which trait area our entire scale is
+# informative and thus able to assess a person’s location on the conservatism trait
+# with good precision
+
+```
+
+# exploratory multigroup MIRT
+
+### for parent 
+
+```{r}
+
+class2 <- SurveyData$parent
+levels(class2)
+modMG <- multipleGroup(ques45, group = class2,
+SE = TRUE, itemtype = "graded")
+
+astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
+p.adjust = 'fdr')
+round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+
+round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+
+```
+
+no DIF items 
+
+### parent education 
+
+```{r}
+
+class3 <- SurveyData$parent_education
+levels(class3) <- c("ILL", "rwp", "psec", "uni")
+
+modMG <- multipleGroup(ques45, group = class3, itemtype = "graded", TOL = 0.01)
+
+astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
+p.adjust = 'fdr')
+round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+
+
+```
+### income category 
+
+```{r}
+
+class4 <- factor(SurveyData$income_category)
+modMG_inc <- multipleGroup(ques45,  model = 2, group = class4, itemtype = "graded", TOL = 0.01)
+
+astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
+p.adjust = 'fdr')
+round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+
+
+```
+
+
+### Limitations
+
+We have used only three levels of likert scale questions. Results could have been more powerful if we used at least five levels. In addition, using an odd number of levels may drive the responder to choose the middle response. On the contrary, using an even number of levels could have avoided this. 
+
+
+
+
 
 # Supplementary figures 
 
@@ -1812,536 +517,15 @@ lkrt_plot <- function(factor, name){
          ylab=NULL,
          scales=list(y=list(relation="free")), layout=c(1,2)))
   
-  
 }
 
-# likert plot for cognitive factor 
-  
-lkrt_plot(demand_factor, "Demand factor")  
 
-```
-
-### likert plot for Bear factor 
-
-```{r fig.height= 15, fig.width= 15}
-lkrt_plot(bear_factor, "Bear factor")  
-```
-
-
-### likert plot for Accuse factor 
-
-```{r fig.height= 15, fig.width= 15}
-lkrt_plot(accuse_factor, "Accuse factor")  
-
-```
-
-
-```{r}
-#  ------------------------------------KW ------------------------
-krus <- function(cog, emot, bhv, four, risk){
-
-  a <- kruskal.test(cog ~ as.factor(risk) )
-  
-  b <- kruskal.test(emot ~ as.factor(risk )) 
-  
-  c <- kruskal.test(bhv ~ as.factor(risk) )
-  
-  d <- kruskal.test(four ~ as.factor(risk) )
-  
-  krsk <- rbind(tidy(a), tidy(b), tidy(c), tidy(d))
-  krsk <- cbind(c("demand", "bear", "accuse", "exaggerate"), krsk)
-  krsk <- krsk[, c(1,2,3,5)]
-  return(krsk)
-}
-
-krus_total <- function(total, risk){
-  
-  krsk <- kruskal.test(total ~ as.factor(risk) )
-  krsk <- tidy(krsk)
-  #krsk <- cbind(c("total score"), krsk)
-  #krsk <- krsk[, c(1,2,3,5)]
-  return(krsk)
-}
-# ------------------------- kruskal wallis analysis ----------------------------
-
-# --------------all three dimensions combined ( with income and education levels combined) -----------
-
-#krus_total(total_mean$Mean_score, risk = total_mean$sex)
-
-# kruskal wallis for total is significant for sex 
-
-
-#krus_total(total_mean$Mean_score, risk = total_mean$income_category)
-
-# kruskal wallis for total is not significant for combined income category 
-
-
-#krus_total(total_mean$Mean_score, risk = total_mean$father_education)
-
-  # kruskal wallis for total is significant for combined father education
-
-
-
-#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$sex)
-
-# emotional and behavioral factors are significant for sex. 
-
-
-#krus(SurveyData$cognitive_dim, SurveyData$emotional_dim, SurveyData$behaviour_dim, SurveyData$sex)
-
-# to confirm: when the mean is used instead of the sum, the same results are evident
-
-# the same exact values when the mean is used. This definetely makes sense. It is all about scaling
-
-
-#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$income_category)
-
-# only the emotional factor is significant for income category 
-
-
-#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$father_edu_recoded)
-
-# all are highly significant 
-
-
-# testing the income after combining 
-#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$income_category_comb)
-
-#again only the emotional factor is significant 
-
-
-# testing the education after combining 
-#krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$father_edu_comb)
-
-#again all the factors are significant 
-
-### combining father education again
-
-# krus(SurveyData$cognitive_dim_sum, SurveyData$emotional_dim_sum, SurveyData$behaviour_dim_sum, SurveyData$father_edu_combined)
-# # again all the factors are highly significant 
-# 
-# # -----------------------   post-hoc analysis -----------------------------------
-# 
-# library(dunn.test)
-# 
-# # testing the father education variable 
-# 
-# dunn.test(as.numeric(total_mean$Mean_score) , as.factor(total_mean$income_category),
-#           kw=T, method="bonferroni")  
-# # nothing is significant, despite the fact that it was significant in kruskal wallis and ANOVA
-# 
-# dunn.test(SurveyData$cognitive_dim_sum , as.factor(SurveyData$father_edu_combined ),
-#           kw=T, method="bonferroni")  
-# 
-# # only the significant value is for university degree in relation to prep/sec degree
-# 
-# dunn.test(SurveyData$emotional_dim_sum , as.factor(SurveyData$father_edu_combined ),
-#           kw=T, method="bonferroni")
-# 
-# # again only the significant value is for university degree in relation to prep/sec degree
-# dunn.test(SurveyData$behaviour_dim_sum , as.factor(SurveyData$father_edu_combined),
-#           kw=T, method="bonferroni")
-# 
-# # again  the significant value is for university degree in relation to prep/sec degree
-# # however, here the significant value is also evident for university in comparison to illiterate 
-# 
-# 
-# # testing income category 
-# 
-# dunn.test(SurveyData$emotional_dim_sum , as.factor(SurveyData$income_category_comb ),
-#           kw=T, method="bonferroni")
-
-# again only the significant value is for (more than 12K) in relation to (less than 2K)
 ```
 
 
 We checked whether irrational believes scores vary according to parent or child factors. We applied multivariate analysis of variance instead of univariate ANOVA or t-test to avoid family-wise error rate(alpha inflation). In addition, this enables us to preserve power since scale scores are correlated. 
 
 
-```{r}
-
-
-# We measured effect of sex, income and father education on total score as well as domain score. Parametric tests (i.e. ANOVA and t-test) in general should be used with caution with ordinal data like the likert scale we are dealing with, as assumptions maybe violated. However, with the large sample size (around 1000 in our case), normality is never a problem. Moreover, testing for the heterogenity of variance proved that the assumption was not violated. Thus, we applied ANOVA for income and father education and t-test for sex, according to the reference. [click to view reference](https://www.st-andrews.ac.uk/media/capod/students/mathssupport/OrdinalexampleR.pdf)
-
-# aov_tot_inc <- aov(as.numeric(total_mean$Mean_score) ~ total_mean$income_category, data = total_mean)
-# 
-# aov_tot_inc <- tidy(aov_tot_inc)   
-# 
-# ```
-# 
-# 
-# ```{r}
-# dat.clean<- na.omit(subset(SurveyData, select = c(demand, bear, accuse,  income_category_comb, sex, father_edu_combined)))
-# 
-# # ggboxplot(dat.clean, x = "income_category_comb", y = "demand", 
-# #           color = "income_category_comb",
-# #           ylab = "Mean score", xlab = "Income category")
-# 
-# 
-# # ggline(dat.clean, x = "income_category_comb", y = "demand", 
-# #        add = c("mean_se", "jitter"), 
-# #        ylab = "Demand", xlab = "income_category")
-# 
-# aov_dem_inc <- aov(demand ~ income_category_comb, data = dat.clean)
-# # It is stated in the model that Estimated effects may be unbalanced 
-# aov_dem_inc <- tidy(aov_dem_inc)
-
-```
-
-
-```{r}
-# # ggboxplot(dat.clean, x = "income_category_comb", y = "bear", 
-# #           color = "income_category_comb",
-# #           ylab = "Mean score", xlab = "Income category")
-# # 
-# # 
-# # ggline(dat.clean, x = "income_category_comb", y = "bear", 
-# #        add = c("mean_se", "jitter"), 
-# #        ylab = "Bear", xlab = "income_category")
-# 
-# aov_bear_inc <- aov(bear ~ income_category_comb, data = dat.clean)
-# # It is stated in the model that Estimated effects may be unbalanced 
-# aov_bear_inc <- tidy(aov_bear_inc)
-# ```
-# 
-# 
-# 
-# ```{r}
-# # ggboxplot(dat.clean, x = "income_category_comb", y = "accuse", 
-# #           color = "income_category_comb",
-# #           ylab = "Mean score", xlab = "Income category")
-# # 
-# # 
-# # ggline(dat.clean, x = "income_category_comb", y = "accuse", 
-# #        add = c("mean_se", "jitter"), 
-# #        ylab = "Accuse", xlab = "income_category")
-# 
-# aov_acc_inc <- aov(accuse ~ income_category_comb, data = dat.clean)
-# # It is stated in the model that Estimated effects may be unbalanced 
-# aov_acc_inc <- tidy(aov_acc_inc)
-# 
-# aov_inc_all <- rbind(aov_tot_inc, aov_dem_inc, aov_bear_inc, aov_acc_inc)[c(1,3,5,7),c(6)]
-# 
-# Term <- c("Total", "Demand", "Bear", "Accuse")
-# 
-
-```
-
-
-
-
-
-```{r}
-
-# Only Bear domain is found to be statistically significant for income category. We further applied tukeyHSD post-hoc analysis to the bear domain. We found that "more than 12000" is significant in comparison with "less than 2000". In addition, "more than 12000" is significant in comparison with "from 2000 to 6000". ~~It is worth noting that the Bear factor is dealing with the ability to bear stuff that someone hates. Thus, I think, may be linked to the income.~~ Regarding father education, total questions were significant as well as bear and accuse factors. For the total questions, university and post grad is significant in comparison to preparatory and secondary education. For the bear factor, we found significant differences between University Degree & post-grad vs prep/sec
-# and prep/sec vs R&W_prim. Finally for the accuse factor, significant differences are between University Degree & post-grad  vs Illiterate  and University Degree & post-grad  vs prep/sec. 
-
-#TukeyHSD(aov_bear_inc)
-
-```
-
-
-
-
-```{r}
-#pairwise.t.test(dat.clean$bear, dat.clean$income_category_comb,
-#                p.adjust.method = "BH")
-
-```
-
-
-
-```{r}
-#plot(aov_dem_inc, 1)
-
-```
-
-```{r}
-#plot(aov_bear_inc, 1)
-
-# Points 992, 587 and 171 are detected as outliers, which can severely affect normality and homogeneity of variance. It can be useful to remove outliers to meet the test assumptions.
-
-```
-
-
-```{r}
-#plot(aov_acc_inc, 1)
-
-```
-
-```{r}
-library(car)
-
-#leveneTest(demand ~ income_category_comb, data = dat.clean)
-
-#leveneTest(bear ~ income_category_comb, data = dat.clean)
-
-#leveneTest(accuse ~ income_category_comb, data = dat.clean)
-
-```
-
-
-```{r}
-#plot(aov_dem_inc, 2)
-# 
-# 
-# # Extract the residuals
-# aov_residuals <- residuals(object = aov_dem_inc)
-# # Run Shapiro-Wilk test
-# #shapiro.test(x = aov_residuals )
-# 
-# 
-# 
-# #plot(aov_bear_inc, 2)
-# 
-# # Extract the residuals
-# aov_residuals <- residuals(object = aov_bear_inc)
-# # Run Shapiro-Wilk test
-# #shapiro.test(x = aov_residuals )
-# 
-# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
-# 
-# #plot(aov_acc_inc, 2)
-# 
-# # Extract the residuals
-# aov_residuals <- residuals(object = aov_acc_inc)
-# # Run Shapiro-Wilk test
-# #shapiro.test(x = aov_residuals )
-# 
-# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
-
-
-```
-
- 
-
-```{r}
-# aov_tot_edu <- aov(as.numeric(total_mean$Mean_score) ~ total_mean$father_education, data = total_mean)
-# 
-# aov_tot_edu <- tidy(aov_tot_edu)  
-
-```
-
-
-```{r}
-# dat.clean<- na.omit(subset(SurveyData, select = c(demand, bear, accuse, father_edu_combined, sex, income_category_comb)))
-# 
-# # ggboxplot(dat.clean, x = "father_edu_combined", y = "demand", 
-# #           color = "father_edu_combined",
-# #           ylab = "Mean score", xlab = "father education")
-# # 
-# # 
-# # ggline(dat.clean, x = "father_edu_combined", y = "demand", 
-# #        add = c("mean_se", "jitter"), 
-# #        ylab = "Demand", xlab = "income_category")
-# 
-# aov_dem_edu <- aov(demand ~ father_edu_combined, data = dat.clean)
-# # It is stated in the model that Estimated effects may be unbalanced 
-# aov_dem_edu <- tidy(aov_dem_edu)
-
-```
-
-
-```{r}
-# ggboxplot(dat.clean, x = "father_edu_combined", y = "bear", 
-#           color = "father_edu_combined",
-#           ylab = "Mean score", xlab = "father education")
-# 
-# 
-# ggline(dat.clean, x = "father_edu_combined", y = "bear", 
-#        add = c("mean_se", "jitter"), 
-#        ylab = "Bear", xlab = "income_category")
-
-
-# aov_bear_edu <- aov(bear ~ father_edu_combined, data = dat.clean)
-# # It is stated in the model that Estimated effects may be unbalanced 
-# aov_bear_edu <- tidy(aov_bear_edu)
-
-```
-
-
-
-```{r}
-# ggboxplot(dat.clean, x = "father_edu_combined", y = "accuse", 
-#           color = "father_edu_combined",
-#           ylab = "Mean score", xlab = "father education")
-# 
-# 
-# ggline(dat.clean, x = "father_edu_combined", y = "accuse", 
-#        add = c("mean_se", "jitter"), 
-#        ylab = "Accuse", xlab = "income_category")
-
-# aov_acc_edu <- aov(accuse ~ father_edu_combined, data = dat.clean)
-# # It is stated in the model that Estimated effects may be unbalanced 
-# aov_acc_edu <- tidy(aov_acc_edu)
-# 
-# aov_edu_all <- rbind(aov_tot_edu, aov_dem_edu, aov_bear_edu, aov_acc_edu)[c(1,3,5,7), c(6)]
-# 
-# anova_table <- cbind(Term, aov_inc_all, aov_edu_all) 
-# 
-# colnames(anova_table) <- c("Term", "Income", "father education")
-# 
-# names(anova_table) <- make.names(names(anova_table)) # flextable doesn't work except on syntactic names
-# 
-# anova_table <- rmdtable(anova_table)
-# 
-# anova_table <- color(anova_table, i = ~ Income < 0.05 | father.education < 0.05, j = ~ Income + father.education, color = "red")
-
-#anova_table
-```
-
-
-
-
-
-```{r}
-#TukeyHSD(aov_tot_edu)
-
-```
-
-
-```{r}
-#TukeyHSD(aov_bear_edu)
-```
-
-```{r}
-#TukeyHSD(aov_acc_edu)
-
-```
-
-
-
-```{r}
-#plot(aov_dem_edu, 1)
-
-```
-
-
-
-```{r}
-#plot(aov_bear_edu, 1)
-
-# I can't see a violation for homogenity of variance. I think it is a matter of few outliers .
-
-# Points 992, 587 and 171 are detected as outliers, which can severely affect normality and homogeneity of variance. It can be useful to remove outliers to meet the test assumptions.
-
-```
-
-
-```{r}
-#plot(aov_acc_edu, 1)
-
-```
-
-
-```{r}
-#leveneTest(demand ~ father_edu_combined, data = dat.clean)
-
-# leveneTest(bear ~ father_edu_combined, data = dat.clean)
-# 
-# leveneTest(accuse ~ father_edu_combined, data = dat.clean)
-
-```
-
-
-
-```{r}
-#plot(aov_dem_edu, 2)
-
-# Extract the residuals
-# aov_residuals <- residuals(object = aov_dem_edu )
-# # # Run Shapiro-Wilk test
-# # shapiro.test(x = aov_residuals )
-# 
-# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
-# 
-# #plot(aov_bear_edu, 2)
-# 
-# # Extract the residuals
-# aov_residuals <- residuals(object = aov_bear_edu)
-# # Run Shapiro-Wilk test
-# #shapiro.test(x = aov_residuals )
-# 
-# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
-# 
-# 
-# #plot(aov_acc_edu, 2)
-# 
-# # Extract the residuals
-# aov_residuals <- residuals(object = aov_acc_edu )
-# # Run Shapiro-Wilk test
-# #shapiro.test(x = aov_residuals )
-# 
-# # shapiro wilk test is highly significant, however, with a large sample size like the one we have (1003), we don't care about normality 
-
-
-```
-
-
-```{r}
-# ggboxplot(dat.clean, x = "sex", y = "demand", 
-#           color = "sex",
-#           ylab = "Mean score", xlab = "sex")
-
-
-# ggline(SurveyData, x = "sex", y = "demand", 
-#        add = c("mean_se", "jitter"), 
-#        ylab = "Demand", xlab = "sex")
-# 
-# t_test_tot_sex <- t.test(as.numeric(as.character(total_mean$Mean_score))
-#  ~ sex, data = total_mean, var.equal = TRUE)
-# t_test_tot_sex <- tidy(t_test_tot_sex)
-# 
-# t_test_sex_dem <- t.test(demand ~ sex, data = dat.clean, var.equal = TRUE)
-# t_test_sex_dem <- tidy(t_test_sex_dem)
-
-```
-
-
-```{r}
-
-# ggboxplot(dat.clean, x = "sex", y = "bear", 
-#           color = "sex",
-#           ylab = "Mean score", xlab = "sex")
-
-
-# ggline(SurveyData, x = "sex", y = "bear", 
-#        add = c("mean_se", "jitter"), 
-#        ylab = "Bear", xlab = "sex")
-
-# t_test_sex_bear <- t.test(bear ~ sex, data = dat.clean, alternative = "two.sided", var.equal = TRUE)
-# t_test_sex_bear <- tidy(t_test_sex_bear)
-# 
-
-```
-
-
-```{r}
-# ggboxplot(dat.clean, x = "sex", y = "accuse", 
-#           color = "sex",
-#           ylab = "Mean score", xlab = "sex")
-
-
-# ggline(SurveyData, x = "sex", y = "accuse", 
-#        add = c("mean_se", "jitter"), 
-#        ylab = "Accuse", xlab = "sex")
-
-# 
-# t_test_sex_acc <- t.test(accuse ~ sex, data = dat.clean, alternative = "two.sided", var.equal = TRUE)
-# t_test_sex_acc <- tidy(t_test_sex_acc)
-# Domains
-# sex_ttest <- cbind(Domains, rbind(t_test_sex_dem[c(1,2,4)], t_test_sex_bear[c(1,2,4)], t_test_sex_acc[c(1,2,4)]))
-# 
-# colnames(sex_ttest)[2] <- "Female"
-# colnames(sex_ttest)[3] <- "Male"
-# 
-# sex_ttest <- rmdtable(sex_ttest)
-# 
-# sex_ttest <- color(sex_ttest, i = ~ p.value < 0.05, j = ~ p.value , color = "red")
-# 
-# sex_ttest
-
-```
 
 Parametric tests as MANOVA should be used with caution with ordinal data like the likert scale we are dealing with, as assumptions maybe violated. However, we are using the average score for the questions. This renders the questions in a continuous rather than a categorical form. The same methodology has been previously applied in a similar article written by [@bonnerDevelopmentValidationParent2006]. Moreover, with the large sample size we have, normality is never a problem. [click to view reference](https://www.st-andrews.ac.uk/media/capod/students/mathssupport/OrdinalexampleR.pdf). Box's M test was used to test the assumption of homogeneity of variances and covariances and the assumption was not violated.  
 
@@ -2789,269 +973,5 @@ Splitting university from all other educational levels yielded significant resul
 
 ```
 
-# MIRT
-
-### modern psychometric with R book
-
-##### Dimentionality assessment
-
-```{r}
-library("MPsychoR")
-library("mirt")
-library("Gifi")
-dim_ques <- princals(ques45)
-plot(dim_ques, main = "Irrational thoughts loadings")
-
-
-# checking before questions removal 
-# dim_ques_61 <- princals(questions)
-# plot(dim_ques_61, main = "Irrational thoughts loadings")
-
-
-```
-
-
-unidimensionality is violated
-
-### check number of factors 
-
-```{r}
-nfactors(ques45, n = 4, cor = "poly")
-
-```
-
-MAP : 2 factors 
-VSS : 2 factors 
-BIC : 4 factors 
-
-
-### scree plot
-
-```{R}
-Rdep <- polychoric(ques45)$rho
-evals <- eigen(Rdep)$values
-scree(Rdep, factors = FALSE)
-
-```
-
-
-```{r}
-
-plot(dim_ques, "screeplot")
-```
-
-2 factors 
-
-
-
-```{r}
-fa.parallel(ques45, cor = "poly")
-
-
-```
-
-### IFA method 
-
-```{r}
-# mirt fits a maximum likelihood (or maximum a posteriori) factor analysis model to any mixture of dichotomous and polytomous data under the item response theory paradigm. Thus I don't have to specify "poly"
-fitifa1 <- mirt(ques45, 1, verbose = FALSE)
-fitifa2 <- mirt(ques45, 2, verbose = FALSE, TOL = 0.001)
-anova(fitifa1, fitifa2, verbose = FALSE)
-
-
-
-fitifa4 <- mirt(ques45, 4, verbose = FALSE, TOL = 0.001)
-anova(fitifa2, fitifa4, verbose = FALSE)
-
-```
-AIC BIC and log likelihood changed dramatically when using 2 factors instead of 1 
-
-this is also true when comparing two and four factors, I may consider.. However, maybe this is because of the large sample size 
-
-
-
-
-##### I have chosen this method since Dave suggested using M2 
-
-```{r}
-
-mod_graded <- mirt(ques45, 2, itemtype = "graded")
-mod_gpcm <- mirt(ques45, 2, itemtype = "gpcm")
-# mod_pc <- mirt(ques45, 2, itemtype = "PC3PL") Partially compensatory models can only be estimated within a confirmatory model
-#mod_ggum <- mirt(ques45, 2, itemtype = "ggum")  not used. check MIRT word document 
-#mod_seq <- mirt(ques45, 2, itemtype = "sequential", TOL = 0.001) # not used, check MIRT word document
-#mod_spline <- mirt(ques45, 2, itemtype = "spline") # no restrictions on the model regarding maths, over sophisticated 
-
-stat_graded <- M2(mod_graded) # didn't use type C2 since I have too many dfs 
-stat_gpcm <- M2(mod_gpcm)
-#stat_ggum <- M2(mod_ggum , type = 'C2')
-#stat_seq <- M2(mod_seq , type = 'C2')
-#stat_spline <- M2(mod_spline , type = 'C2')
-
-```
-
-as per the modern psychometrics book 
-For the CFI, we can use the same 0.95 fit
-cutoff as in CFA/SEM. For the RMSEA, the CFA/SEM cutoff was 0.05 for a good
-fitting model. In IRT, it is suggested to use 0.05/k (with k being the number of
-categories per item) as fit cutoff.
-
-
-https://groups.google.com/forum/#!topic/mirt-package/gy63tCz2W98   ( same as SEM, 0.9 for CFI and 0.05 for RMSEA)
-
-Do you have a large sample? If so could be that small differences in expected vs observed response freqs are causing significant p values even though magnitude of misfit is not that big per empirical item plots (and S-X2 RMSEA) https://groups.google.com/forum/#!searchin/mirt-package/M2|sort:date/mirt-package/ZWFimGtUEsI/MXx6pXoaBgAJ 
-
- 
-### item fit 
-
-##### graded 
-
-```{r}
-ifit_ques45_graded <- mirt::itemfit(mod_graded)
-
-ifit_ques45_graded[ifit_ques45[, 5] < 0.05, ] ## misfitting items
-
-```
-
-##### gpcm 
-
-```{r}
-ifit_ques45_gpcm <- mirt::itemfit(mod_gpcm)
-
-ifit_ques45_gpcm[ifit_ques45[, 5] < 0.05, ] ## misfitting items
-
-```
-
-
-```{r}
-summary(mod_graded, rotate = "oblimin")
-
-
-```
-
-```{R}
-itemplot(mod_graded, 3, main = "ICS addit3",
-rot = list(xaxis = -70, yaxis = 50, zaxis = 10))
-
-```
-
-```{r}
-coef(mod_graded)
-
-```
-### multidimentional item location 
-
-```{r}
-head(MDIFF(mod_graded))
-
-```
-
-### person paramegters 
-
-```{r}
-
-head(fscores(mod_graded))
-
-```
-### residuals
-
-```{r}
-
-res <- residuals(mod_graded, type = "LDG2", digits = 4, df.p = T)
-
-```
-
-# TRY after removal 2 questions
-
-```{R}
-ques43_irt <- ques45 %>% 
-  dplyr::select(- c(40,44))
-
-mod_graded_43 <- mirt(ques43_irt, 2, itemtype = "graded")
-
-stat_graded_43 <- M2(mod_graded_43) # didn't use type C2 since I have too many dfs 
-
-```
-
-# Try after removal 20 questions 
-
-```{r}
-ques19_irt <- ques45 %>% 
-  dplyr::select(- c(20:61))
-
-mod_graded_19 <- mirt(ques19_irt, 1, itemtype = "graded")
-
-stat_graded_19 <- M2(mod_graded_19) # didn't use type C2 since I have too many dfs 
-
-```
-
-
-```{r}
-
-plot(mod_graded, type = "info", main = "Item Information")
-
-# This plot (not shown here) tells us in which trait area our entire scale is
-# informative and thus able to assess a person’s location on the conservatism trait
-# with good precision
-
-```
-
-# exploratory multigroup MIRT
-
-### for parent 
-
-```{r}
-
-class2 <- SurveyData$parent
-levels(class2)
-modMG <- multipleGroup(ques45, group = class2,
-SE = TRUE, itemtype = "graded")
-
-astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
-p.adjust = 'fdr')
-round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
-
-round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
-
-```
-
-no DIF items 
-
-### parent education 
-
-```{r}
-
-class3 <- SurveyData$parent_education
-levels(class3) <- c("ILL", "rwp", "psec", "uni")
-
-modMG <- multipleGroup(ques45, group = class3, itemtype = "graded", TOL = 0.01)
-
-astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
-p.adjust = 'fdr')
-round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
-
-
-```
-### income category 
-
-```{r}
-
-class4 <- factor(SurveyData$income_category)
-modMG_inc <- multipleGroup(ques45,  model = 2, group = class4, itemtype = "graded", TOL = 0.01)
-
-astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
-p.adjust = 'fdr')
-round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
-
-
-```
-
-
-### Limitations
-
-We have used only three levels of likert scale questions. Results could have been more powerful if we used at least five levels. In addition, using an odd number of levels may drive the responder to choose the middle response. On the contrary, using an even number of levels could have avoided this. 
-
 
 ### References
-
-
