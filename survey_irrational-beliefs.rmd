@@ -55,7 +55,10 @@ library(corrr) # for correlation matrix, a really nice package
 library(ICSNP)   # for hotelling test
 library(readxl)
 library(mirt) # for fitting multidimentional IRT 
+```
 
+
+```{r}
 # When you are done writing, your bibliography file is likely to contain some unneeded references, which you added while writing but removed during revisions. tidy_bib_file() removes unneeded (or duplicate) entries from your bibliography file.
 
 SurveyData <-read.csv("es_data.csv")
@@ -209,7 +212,7 @@ table1(~ sex +  governorate + parent + Number_of_family_members +  governorate +
 
 ```
 
-### repeat polychoric correlation based on the remaining 45 questions. 
+# proper questions 
 
 ```{r}
 
@@ -277,8 +280,8 @@ plot(dim_ques, "screeplot")
 
 
 ```{r}
-fa.parallel(ques45, cor = "poly")
 
+fa.parallel(ques45, cor = "poly")
 
 ```
 
@@ -286,14 +289,15 @@ fa.parallel(ques45, cor = "poly")
 
 ```{r}
 # mirt fits a maximum likelihood (or maximum a posteriori) factor analysis model to any mixture of dichotomous and polytomous data under the item response theory paradigm. Thus I don't have to specify "poly"
-fitifa1 <- mirt(ques45, 1, verbose = FALSE)
-fitifa2 <- mirt(ques45, 2, verbose = FALSE, TOL = 0.001)
-anova(fitifa1, fitifa2, verbose = FALSE)
+mod_graded <- mirt(ques45, 1, itemtype = "graded")
+mod_graded2 <- mirt(ques45, 2, itemtype = "graded", TOL = 0.001)
+
+anova(mod_graded, mod_graded2, verbose = T)
 
 
 
-fitifa4 <- mirt(ques45, 4, verbose = FALSE, TOL = 0.001)
-anova(fitifa2, fitifa4, verbose = FALSE)
+mod_graded4 <- mirt(ques45, 4, itemtype = "graded", TOL = 0.001)
+anova(mod_graded2, mod_graded2, verbose = T)
 
 ```
 AIC BIC and log likelihood changed dramatically when using 2 factors instead of 1 
@@ -307,14 +311,13 @@ this is also true when comparing two and four factors, I may consider.. However,
 
 ```{r}
 
-mod_graded <- mirt(ques45, 2, itemtype = "graded")
 mod_gpcm <- mirt(ques45, 2, itemtype = "gpcm")
 # mod_pc <- mirt(ques45, 2, itemtype = "PC3PL") Partially compensatory models can only be estimated within a confirmatory model
 #mod_ggum <- mirt(ques45, 2, itemtype = "ggum")  not used. check MIRT word document 
 #mod_seq <- mirt(ques45, 2, itemtype = "sequential", TOL = 0.001) # not used, check MIRT word document
 #mod_spline <- mirt(ques45, 2, itemtype = "spline") # no restrictions on the model regarding maths, over sophisticated 
 
-stat_graded <- M2(mod_graded) # didn't use type C2 since I have too many dfs 
+stat_graded2 <- M2(mod_graded2) # didn't use type C2 since I have too many dfs 
 stat_gpcm <- M2(mod_gpcm)
 #stat_ggum <- M2(mod_ggum , type = 'C2')
 #stat_seq <- M2(mod_seq , type = 'C2')
@@ -339,9 +342,9 @@ Do you have a large sample? If so could be that small differences in expected vs
 ##### graded 
 
 ```{r}
-ifit_ques45_graded <- mirt::itemfit(mod_graded)
+ifit_ques45_graded <- mirt::itemfit(mod_graded2)
 
-ifit_ques45_graded[ifit_ques45[, 5] < 0.05, ] ## misfitting items
+ifit_ques45_graded[ifit_ques45_graded[, 5] < 0.05, ] ## misfitting items
 
 ```
 
@@ -356,25 +359,24 @@ ifit_ques45_gpcm[ifit_ques45[, 5] < 0.05, ] ## misfitting items
 
 
 ```{r}
-summary(mod_graded, rotate = "oblimin")
-
+summary(mod_graded2, rotate = "oblimin")
 
 ```
 
 ```{R}
-itemplot(mod_graded, 3, main = "ICS addit3",
+itemplot(mod_graded2, 3, main = "ICS addit3",
 rot = list(xaxis = -70, yaxis = 50, zaxis = 10))
 
 ```
 
 ```{r}
-coef(mod_graded)
+coef(mod_graded2)
 
 ```
 ### multidimentional item location 
 
 ```{r}
-head(MDIFF(mod_graded))
+head(MDIFF(mod_graded2))
 
 ```
 
@@ -382,51 +384,19 @@ head(MDIFF(mod_graded))
 
 ```{r}
 
-head(fscores(mod_graded))
+head(fscores(mod_graded2))
 
 ```
+
 ### residuals
 
 ```{r}
 
-res <- residuals(mod_graded, type = "LDG2", digits = 4, df.p = T)
-
-```
-
-# TRY after removal 2 questions
-
-```{R}
-ques43_irt <- ques45 %>% 
-  dplyr::select(- c(40,44))
-
-mod_graded_43 <- mirt(ques43_irt, 2, itemtype = "graded")
-
-stat_graded_43 <- M2(mod_graded_43) # didn't use type C2 since I have too many dfs 
-
-```
-
-# Try after removal 20 questions 
-
-```{r}
-ques19_irt <- ques45 %>% 
-  dplyr::select(- c(20:61))
-
-mod_graded_19 <- mirt(ques19_irt, 1, itemtype = "graded")
-
-stat_graded_19 <- M2(mod_graded_19) # didn't use type C2 since I have too many dfs 
+res <- residuals(mod_graded2, type = "LDG2", digits = 4, df.p = T)
 
 ```
 
 
-```{r}
-
-plot(mod_graded, type = "info", main = "Item Information")
-
-# This plot (not shown here) tells us in which trait area our entire scale is
-# informative and thus able to assess a person’s location on the conservatism trait
-# with good precision
-
-```
 
 # exploratory multigroup MIRT
 
@@ -436,15 +406,16 @@ plot(mod_graded, type = "info", main = "Item Information")
 
 class2 <- SurveyData$parent
 levels(class2)
-modMG <- multipleGroup(ques45, group = class2,
-SE = TRUE, itemtype = "graded")
+modMG <- multipleGroup(ques45, model = 2, group = class2,
+SE = TRUE, itemtype = "graded", TOL = 0.01)  # model =2 means two dimentional model
+# https://groups.google.com/forum/#!searchin/mirt-package/multiplegroup$20exploratory|sort:date/mirt-package/j-ZyjuXPNcY/zoSTk-BEBgAJ 
+
+# which p-value to use ?  Ans: 0.05, but u can use 0.01 
+# https://groups.google.com/forum/#!searchin/mirt-package/multiplegroup$20exploratory|sort:date/mirt-package/CXWkXsKCBvo/WAivQ5ABBQAJ
 
 astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
 p.adjust = 'fdr')
 round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
-
-round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
-
 ```
 
 no DIF items 
@@ -456,25 +427,78 @@ no DIF items
 class3 <- SurveyData$parent_education
 levels(class3) <- c("ILL", "rwp", "psec", "uni")
 
-modMG <- multipleGroup(ques45, group = class3, itemtype = "graded", TOL = 0.01)
+modMG_edu <- multipleGroup(ques45, model = 2, group = class3, itemtype = "graded", TOL = 0.01, SE = T)  
 
-astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
-p.adjust = 'fdr')
-round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+DIF_edu <- DIF(modMG_edu, c('a1', 'd'), Wald = T,
+p.adjust = 'fdr', simplify = T, verbose = T)
+round(DIF_edu$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+
 
 
 ```
+
 ### income category 
 
 ```{r}
 
 class4 <- factor(SurveyData$income_category)
-modMG_inc <- multipleGroup(ques45,  model = 2, group = class4, itemtype = "graded", TOL = 0.01)
+modMG_inc <- multipleGroup(ques45,  model = 2, group = class4, itemtype = "graded", TOL = 0.01, SE= T)
 
-astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
+DIF_inc <- DIF(modMG_inc, c('a1', 'd'), Wald = TRUE,
 p.adjust = 'fdr')
-round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+round(DIF_inc$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
 
+
+```
+
+
+### Number of children 
+
+```{r}
+
+class5 <- factor(SurveyData$Number_of_family_members)
+modMG_mem <- multipleGroup(ques45,  model = 2, group = class5, itemtype = "graded", TOL = 0.01, SE= T)
+
+DIF_mem <- DIF(modMG_mem, c('a1', 'd'), Wald = TRUE,
+p.adjust = 'fdr')
+round(DIF_mem$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+
+```
+
+
+
+# TRY after removal 2 questions
+
+```{R}
+ques43_irt <- ques45 %>% 
+  dplyr::select(- c(40,44))
+
+mod_graded2_43 <- mirt(ques43_irt, 2, itemtype = "graded")
+
+stat_graded_43 <- M2(mod_graded2_43) # didn't use type C2 since I have too many dfs 
+
+```
+
+# Try after removal 20 questions 
+
+```{r}
+ques19_irt <- ques45 %>% 
+  dplyr::select(- c(20:61))
+
+mod_graded2_19 <- mirt(ques19_irt, 1, itemtype = "graded")
+
+stat_graded_19 <- M2(mod_graded2_19) # didn't use type C2 since I have too many dfs 
+
+```
+
+
+```{r}
+
+plot(mod_graded2, type = "info", main = "Item Information")
+
+# This plot (not shown here) tells us in which trait area our entire scale is
+# informative and thus able to assess a person’s location on the conservatism trait
+# with good precision
 
 ```
 
