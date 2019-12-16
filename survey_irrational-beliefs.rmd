@@ -23,6 +23,7 @@ R packages used in the analysis were psych version 1.8.4 for factor analysis , H
 
 ```{r}
 options(scipen = 999)
+options("mc.cores"=2) 
 
 library(data.table)
 library(lavaan)
@@ -70,8 +71,7 @@ completeSurveyData=SurveyData[complete.cases(SurveyData[2:62]), ]
 ## complete cases all
 completeSurveyData=SurveyData[complete.cases(SurveyData), ]
 
-gov_total <- read.csv("CCHECancerRegistry-HamzaGovern_DATA_LABELS_2019-10-02_1455.csv")
-
+gov_total <- read_csv("HamzaGovern.csv")
 # correction for some MRNs mistyped 
 
 fir <- str_extract(SurveyData$MRN, "\\d{4}")   
@@ -82,9 +82,9 @@ las <- str_pad(las, 4, pad = "0")
 
 SurveyData$MRN <- as.numeric(paste(fir,las, sep = ""))
 
-SurveyData$MRN[SurveyData$MRN == 201059530] <- 20154530
+SurveyData$MRN[SurveyData$MRN == 201059530] <- 20155330
 
-SurveyData$MRN[SurveyData$MRN == 201444590] <- 20144590
+SurveyData$MRN[SurveyData$MRN == 201445390] <- 20145390
 
 SurveyData$MRN[SurveyData$MRN == 20071040] <- 20070104
 
@@ -93,7 +93,7 @@ SurveyData$MRN[SurveyData$MRN == 20800619] <- 20080619
 gov_total <- gov_total %>% 
   dplyr::select(MRN, Governorate)
 
-SurveyData <- inner_join( SurveyData ,gov_total)
+SurveyData <- left_join(SurveyData ,gov_total)
 
 #ff <- anti_join(ddd, gov_total )
 
@@ -216,11 +216,42 @@ table1(~ sex +  governorate + parent + Number_of_family_members +  governorate +
 
 ```{r}
 
-ques45 <- questions %>% 
-  dplyr::select(-c(6,9,12,18,45,3,47, 55,61,44,50, 16,17,49,51, 40))
+ques53 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49))
 
-ques44 <- questions %>% 
-  dplyr::select(-c(6,9,10, 11,12,18,45,3,47, 55,44,50, 16,17,49,51, 40))
+ques52 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 51))
+
+ques51 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 51, 11))
+
+ques49 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 51, 11, 25, 40))
+
+ques48 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 51, 11, 25, 40, 46)) # I will keep 46 
+
+ques49rep <- questions %>% 
+  dplyr::select(-c(7, 12, 45, 30, 9, 47, 16, 49, 51, 11, 25, 40))   # replaced 23 with 45
+
+ques48_2 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 51, 11, 25, 40, 45)) # I will keep 46, remove both 45 and 23 
+
+ques48_3 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 51, 11, 25, 40, 41))# removed 41 
+
+ques48_4 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 51, 11, 25, 40, 26))# removed 41 
+
+ques48_5 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 51, 11, 25, 40, 59))# removed 41 
+
+
+# ques45 <- questions %>% 
+#   dplyr::select(-c(6,9,12,18,53,3,47, 55,61,44,50, 16,17,49,51, 40))
+# 
+# ques44 <- questions %>% 
+#   dplyr::select(-c(6,9,10, 11,12,18,53,3,47, 55,44,50, 16,17,49,51, 40))
 
 ```
 
@@ -234,36 +265,69 @@ ques44 <- questions %>%
 library("MPsychoR")
 library("mirt")
 library("Gifi")
-dim_ques <- princals(ques45)
+dim_ques <- princals(ques53)
 plot(dim_ques, main = "Irrational thoughts loadings")
 
-
-# checking before questions removal 
-# dim_ques_61 <- princals(questions)
-# plot(dim_ques_61, main = "Irrational thoughts loadings")
-
-
 ```
-
 
 unidimensionality is violated
 
 ### check number of factors 
 
 ```{r}
-nfactors(ques45, n = 4, cor = "poly")
+no_fact <- nfactors(ques53, n = 4, cor = "poly", rotate = "oblimin")
+# vss = 2
+# MAP = 4
+# emperical BIC = 9
+# ss adjusted BIC = 20
+
 
 ```
 
-MAP : 2 factors 
-VSS : 2 factors 
-BIC : 4 factors 
+```{r}
+resvss <- vss(ques53, n.obs = nrow(ques53), plot = FALSE, rotate = "oblimin")
+
+# VSS complexity 1 achieves a maximimum of 0.62  with  1  factors
+# VSS complexity 2 achieves a maximimum of 0.72  with  2  factors
+# 
+# The Velicer MAP achieves a minimum of 0  with  2  factors 
+# BIC achieves a minimum of  -5626.4  with  3  factors
+# Sample Size adjusted BIC achieves a minimum of  -1942.75  with  5  factors
+```
+
+
+
+```{r}
+#trial one dimension
+
+faques53_one <- fa(ques53, 1, cor = "poly")
+summary(faques53_one)
+# very very low TLI 
+
+faques53_two <- fa(ques53, 2, cor = "poly")
+summary(faques53_two)
+
+
+# improved estimates 
+# TLI : 0.625
+
+faques53_three <- fa(ques53, 3, cor = "poly")
+summary(faques53_three)
+
+# TLI : 0.646
+
+faques53_four <- fa(ques53, 4, cor = "poly")
+summary(faques53_four)
+
+# TLI : 0.664
+
+```
 
 
 ### scree plot
 
 ```{R}
-Rdep <- polychoric(ques45)$rho
+Rdep <- polychoric(ques53)$rho
 evals <- eigen(Rdep)$values
 scree(Rdep, factors = FALSE)
 
@@ -275,55 +339,216 @@ scree(Rdep, factors = FALSE)
 plot(dim_ques, "screeplot")
 ```
 
-2 factors 
+2 factors or 3  or 4 or 5 
 
 
 
 ```{r}
 
-fa.parallel(ques45, cor = "poly")
+parallel2 <- fa.parallel(ques53,nfactors = 2, cor = "poly" )
+
+parallel4 <- fa.parallel(ques53,nfactors = 4, cor = "poly" )
+
+parallel6 <- fa.parallel(ques53,nfactors = 6, cor = "poly" )
+
+parallel8 <- fa.parallel(ques53,nfactors = 8, cor = "poly" )
+
+# documentation :
+# A sad observation about parallel analysis is that it is sensitive to sample size. That is, for large data sets, the eigen values of random data are very close to 1. This will lead to different estimates of the number of factors as a function of sample size. Consider factor structure of the bfi data set (the first 25 items are meant to represent a five factor model). For samples of 200 or less, parallel analysis suggests 5 factors, but for 1000 or more, six factors and components are indicated. This is not due to an instability of the eigen values of the real data, but rather the closer approximation to 1 of the random data as n increases.
+# 
+# Although with nfactors=1, 6 factors are suggested, when specifying nfactors =5, parallel analysis of the bfi suggests 12 factors should be extracted
 
 ```
+18 factors and 6 components. 
+
+
+
 
 ### IFA method 
 
 ```{r}
 # mirt fits a maximum likelihood (or maximum a posteriori) factor analysis model to any mixture of dichotomous and polytomous data under the item response theory paradigm. Thus I don't have to specify "poly"
-mod_graded <- mirt(ques45, 1, itemtype = "graded")
-mod_graded2 <- mirt(ques45, 2, itemtype = "graded", TOL = 0.001)
+mod_graded <- mirt(ques53, 1, itemtype = "graded")
+mod_graded2 <- mirt(ques53, 2, itemtype = "graded", TOL = 0.001)
 
 anova(mod_graded, mod_graded2, verbose = T)
 
+mod_graded3 <- mirt(ques53, 3, itemtype = "graded", TOL = 0.001)
+anova(mod_graded3, mod_graded2, verbose = T)
 
 
-mod_graded4 <- mirt(ques45, 4, itemtype = "graded", TOL = 0.001)
-anova(mod_graded2, mod_graded2, verbose = T)
+mod_graded4 <- mirt(ques53, 4, itemtype = "graded", TOL = 0.001)
+anova(mod_graded4, mod_graded3, verbose = T)
+# slight decrease in AIC BIC 
+
+
+anova(mod_graded4, mod_graded2, verbose = T)
+
+anova(mod_graded3, mod_graded4, verbose = T)
+
+# 4 models doesn't make sense, slight improvement
+
+
+# I would go for 3 factors  
+
 
 ```
 AIC BIC and log likelihood changed dramatically when using 2 factors instead of 1 
 
-this is also true when comparing two and four factors, I may consider.. However, maybe this is because of the large sample size 
+this is also true when comparing two and three factors.  I will use 3 factors but I will still confirm with Dr. Essam. 
+```{r}
+# removing one by one 
+
+### removing question 51 
+
+# mod_52_graded3 <- mirt(ques52, 3, itemtype = "graded", TOL = 0.001)
+# 
+# anova(mod_graded3, mod_52_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved to a relatively high extent
+# 
+# stat_52_graded3 <- M2(mod_52_graded3) # didn't use type C2 since I have too many dfs 
+# 
+# ifit_ques52_graded <- mirt::itemfit(mod_52_graded3)
+# 
+# ifit_ques52_graded[ifit_ques52_graded[, 5] < 0.05, ] ## misfitting items
+# 
+
+### removing question 11
+
+mod_51_graded3 <- mirt(ques51, 3, itemtype = "graded", TOL = 0.001)
+
+anova(mod_51_graded3, mod_graded3, verbose = T) # p value is not significant, however, almost everything has improved to a relatively high extent
+# after removal of questions 51 and 11, improvement is even bigger. 
+
+### removing 25, 40
+
+mod_49_graded3 <- mirt(ques49, 3, itemtype = "graded", TOL = 0.001)
+
+anova(mod_51_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+
+anova(mod_49_graded3, mod_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+
+stat_49_graded3 <- M2(mod_49_graded3) # didn't use type C2 since I have too many dfs 
+ 
+ifit_ques49_graded <- mirt::itemfit(mod_49_graded3)
+
+ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
+
+## removing 46
+# 
+# mod_48_graded3 <- mirt(ques48, 3, itemtype = "graded", TOL = 0.001)
+# 
+# anova(mod_48_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+# 
+# anova(mod_48_graded3, mod_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+# 
+# stat_48_graded3 <- M2(mod_48_graded3) # didn't use type C2 since I have too many dfs 
+#  
+# ifit_ques48_graded <- mirt::itemfit(mod_48_graded3)
+# 
+# ifit_ques48_graded[ifit_ques48_graded[, 5] < 0.05, ] ## misfitting items
+# 
+# 
+# 
+# mod_48_2_graded3 <- mirt(ques48_2, 3, itemtype = "graded", TOL = 0.001)
+# 
+# anova(mod_48_2_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+# 
+# stat_48_2_graded3 <- M2(mod_48_2_graded3) # didn't use type C2 since I have too many dfs 
+# 
+# # remove 41
+# 
+# mod_48_3_graded3 <- mirt(ques48_3, 3, itemtype = "graded", TOL = 0.001)
+# 
+# anova(mod_48_3_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+# 
+# stat_48_3_graded3 <- M2(mod_48_3_graded3) # didn't use type C2 since I have too many dfs 
+# 
+# # End of trial. I will then examine questions based on p-value
+# 
+# # removing question 26
+# 
+# mod_48_4_graded3 <- mirt(ques48_4, 3, itemtype = "graded", TOL = 0.001)
+# 
+# anova(mod_48_4_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+# 
+# stat_48_4_graded3 <- M2(mod_48_4_graded3) # didn't use type C2 since I have too many dfs 
+# 
+# 
+# 
+# 
+# # removing question 59
+# 
+# mod_48_5_graded3 <- mirt(ques48_5, 3, itemtype = "graded", TOL = 0.001)
+# 
+# anova(mod_48_5_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+# 
+# stat_48_5_graded3 <- M2(mod_48_5_graded3) # didn't use type C2 since I have too many dfs 
+# 
+# 
+
+```
+
+```{r}
+# foo <- summary(mod_51_graded3, rotate = "oblimin")
+# 
+# trial_all <- data.frame(foo$rotF) %>%
+#   rownames_to_column('gene') %>%
+#   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+#   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+# 
+# foo_v <- summary(mod_51_graded3, rotate = "varimax")
+# 
+# trial_all_v <- data.frame(foo_v$rotF) %>%
+#   rownames_to_column('gene') %>%
+#   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+#   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+
+
+foo <- summary(mod_49_graded3, rotate = "oblimin")
+
+trial_all <- data.frame(foo$rotF) %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+
+foo_v <- summary(mod_49_graded3, rotate = "varimax")
+
+trial_all_v <- data.frame(foo_v$rotF) %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+
+
+
+```
 
 
 
 
 ##### I have chosen this method since Dave suggested using M2 
 
+I have chosen graded response model since it appeared from Dr Essam talk that maybe some people are afraid to answer, thus they may choose "sometime crosses my mind" while in fact they mean this thing. So I thought graded response model would be better at describing the data. 
+
 ```{r}
 
-mod_gpcm <- mirt(ques45, 2, itemtype = "gpcm")
-# mod_pc <- mirt(ques45, 2, itemtype = "PC3PL") Partially compensatory models can only be estimated within a confirmatory model
-#mod_ggum <- mirt(ques45, 2, itemtype = "ggum")  not used. check MIRT word document 
-#mod_seq <- mirt(ques45, 2, itemtype = "sequential", TOL = 0.001) # not used, check MIRT word document
-#mod_spline <- mirt(ques45, 2, itemtype = "spline") # no restrictions on the model regarding maths, over sophisticated 
+#mod_gpcm <- mirt(ques53, 2, itemtype = "gpcm")
+# mod_pc <- mirt(ques53, 2, itemtype = "PC3PL") Partially compensatory models can only be estimated within a confirmatory model
+#mod_ggum <- mirt(ques53, 2, itemtype = "ggum")  not used. check MIRT word document 
+#mod_seq <- mirt(ques53, 2, itemtype = "sequential", TOL = 0.001) # not used, check MIRT word document
+#mod_spline <- mirt(ques53, 2, itemtype = "spline") # no restrictions on the model regarding maths, over sophisticated 
 
-stat_graded2 <- M2(mod_graded2) # didn't use type C2 since I have too many dfs 
-stat_gpcm <- M2(mod_gpcm)
-#stat_ggum <- M2(mod_ggum , type = 'C2')
-#stat_seq <- M2(mod_seq , type = 'C2')
-#stat_spline <- M2(mod_spline , type = 'C2')
+# stat_graded2 <- M2(mod_graded2) # didn't use type C2 since I have too many dfs 
+# stat_graded3 <- M2(mod_graded3) # didn't use type C2 since I have too many dfs 
+
+stat_51_graded3 <- M2(mod_51_graded3) # didn't use type C2 since I have too many dfs 
+
+
+#stat_gpcm <- M2(mod_gpcm)
 
 ```
+statistics reveal here that 3 factors is better than 2 factors 
+
+This even better after removing questions 51 and 11
 
 as per the modern psychometrics book 
 For the CFI, we can use the same 0.95 fit
@@ -342,41 +567,55 @@ Do you have a large sample? If so could be that small differences in expected vs
 ##### graded 
 
 ```{r}
-ifit_ques45_graded <- mirt::itemfit(mod_graded2)
 
-ifit_ques45_graded[ifit_ques45_graded[, 5] < 0.05, ] ## misfitting items
+ifit_ques51_graded <- mirt::itemfit(mod_51_graded3)
+
+ifit_ques51_graded[ifit_ques51_graded[, 5] < 0.05, ] ## misfitting items
+# 
+# ifit_ques53_graded <- mirt::itemfit(mod_graded3)
+# 
+# ifit_ques53_graded[ifit_ques53_graded[, 5] < 0.05, ] ## misfitting items
 
 ```
+A single questions is slightly missfitting, and I would like to keep it. 
 
+
+```{r}
 ##### gpcm 
 
-```{r}
-ifit_ques45_gpcm <- mirt::itemfit(mod_gpcm)
+# ifit_ques53_gpcm <- mirt::itemfit(mod_gpcm)
+# 
+# ifit_ques53_gpcm[ifit_ques53[, 5] < 0.05, ] ## misfitting items
 
-ifit_ques45_gpcm[ifit_ques45[, 5] < 0.05, ] ## misfitting items
+```
+
+Here is it recommended by factor loadings that we should remove 5 questions. (25,27,40,41,46)
+
+On examining the questions, it appears that some questions should in fact be removed as 25 and 40.. 
+
+On chaning the rotation to varimax, three questions are consistent (25,27,40)
+
+I will remove 25 and 40, since there phrasing is strange and I will recheck.
+
+```{r}
 
 ```
 
-
-```{r}
-summary(mod_graded2, rotate = "oblimin")
-
-```
 
 ```{R}
-itemplot(mod_graded2, 3, main = "ICS addit3",
+itemplot(mod_51_graded3, 3, main = "ICS addit3",
 rot = list(xaxis = -70, yaxis = 50, zaxis = 10))
 
 ```
 
 ```{r}
-coef(mod_graded2)
+coef(mod_51_graded3)
 
 ```
 ### multidimentional item location 
 
 ```{r}
-head(MDIFF(mod_graded2))
+head(MDIFF(mod_51_graded3))
 
 ```
 
@@ -384,7 +623,7 @@ head(MDIFF(mod_graded2))
 
 ```{r}
 
-head(fscores(mod_graded2))
+head(fscores(mod_51_graded3))
 
 ```
 
@@ -392,7 +631,7 @@ head(fscores(mod_graded2))
 
 ```{r}
 
-res <- residuals(mod_graded2, type = "LDG2", digits = 4, df.p = T)
+res <- residuals(mod_51_graded3, type = "LDG2", digits = 4, df.p = T)
 
 ```
 
@@ -406,7 +645,7 @@ res <- residuals(mod_graded2, type = "LDG2", digits = 4, df.p = T)
 
 class2 <- SurveyData$parent
 levels(class2)
-modMG <- multipleGroup(ques45, model = 2, group = class2,
+modMG <- multipleGroup(ques53, model = 2, group = class2,
 SE = TRUE, itemtype = "graded", TOL = 0.01)  # model =2 means two dimentional model
 # https://groups.google.com/forum/#!searchin/mirt-package/multiplegroup$20exploratory|sort:date/mirt-package/j-ZyjuXPNcY/zoSTk-BEBgAJ 
 
@@ -427,7 +666,7 @@ no DIF items
 class3 <- SurveyData$parent_education
 levels(class3) <- c("ILL", "rwp", "psec", "uni")
 
-modMG_edu <- multipleGroup(ques45, model = 2, group = class3, itemtype = "graded", TOL = 0.01, SE = T)  
+modMG_edu <- multipleGroup(ques53, model = 2, group = class3, itemtype = "graded", TOL = 0.01, SE = T)  
 
 DIF_edu <- DIF(modMG_edu, c('a1', 'd'), Wald = T,
 p.adjust = 'fdr', simplify = T, verbose = T)
@@ -442,7 +681,7 @@ round(DIF_edu$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
 ```{r}
 
 class4 <- factor(SurveyData$income_category)
-modMG_inc <- multipleGroup(ques45,  model = 2, group = class4, itemtype = "graded", TOL = 0.01, SE= T)
+modMG_inc <- multipleGroup(ques53,  model = 2, group = class4, itemtype = "graded", TOL = 0.01, SE= T)
 
 DIF_inc <- DIF(modMG_inc, c('a1', 'd'), Wald = TRUE,
 p.adjust = 'fdr')
@@ -457,7 +696,7 @@ round(DIF_inc$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
 ```{r}
 
 class5 <- factor(SurveyData$Number_of_family_members)
-modMG_mem <- multipleGroup(ques45,  model = 2, group = class5, itemtype = "graded", TOL = 0.01, SE= T)
+modMG_mem <- multipleGroup(ques53,  model = 2, group = class5, itemtype = "graded", TOL = 0.01, SE= T)
 
 DIF_mem <- DIF(modMG_mem, c('a1', 'd'), Wald = TRUE,
 p.adjust = 'fdr')
@@ -470,31 +709,31 @@ round(DIF_mem$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
 # TRY after removal 2 questions
 
 ```{R}
-ques43_irt <- ques45 %>% 
+ques43_irt <- ques53 %>% 
   dplyr::select(- c(40,44))
 
-mod_graded2_43 <- mirt(ques43_irt, 2, itemtype = "graded")
+mod_51_graded3_43 <- mirt(ques43_irt, 2, itemtype = "graded")
 
-stat_graded_43 <- M2(mod_graded2_43) # didn't use type C2 since I have too many dfs 
+stat_graded_43 <- M2(mod_51_graded3_43) # didn't use type C2 since I have too many dfs 
 
 ```
 
 # Try after removal 20 questions 
 
 ```{r}
-ques19_irt <- ques45 %>% 
+ques19_irt <- ques53 %>% 
   dplyr::select(- c(20:61))
 
-mod_graded2_19 <- mirt(ques19_irt, 1, itemtype = "graded")
+mod_51_graded3_19 <- mirt(ques19_irt, 1, itemtype = "graded")
 
-stat_graded_19 <- M2(mod_graded2_19) # didn't use type C2 since I have too many dfs 
+stat_graded_19 <- M2(mod_51_graded3_19) # didn't use type C2 since I have too many dfs 
 
 ```
 
 
 ```{r}
 
-plot(mod_graded2, type = "info", main = "Item Information")
+plot(mod_graded3, type = "info", main = "Item Information")
 
 # This plot (not shown here) tells us in which trait area our entire scale is
 # informative and thus able to assess a person’s location on the conservatism trait
@@ -998,4 +1237,117 @@ Splitting university from all other educational levels yielded significant resul
 ```
 
 
+### detect redundant questions 
+
+```{r}
+all_q <- round(all_qu$rho, 2)  # 2 decimal places
+all_q[all_q == 1] <- 0  # convert ones to zeros    
+all_q <- data.frame(all_q)
+max(all_q)
+
+all_q
+
+bes <- all_q %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, any_vars(. >0.62)) %>%
+  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+
+# tau is The normal equivalent of the cutpoints
+
+)
+Phi two binary 
+
+, L, C or lambda
+
+
+if(!require(rcompanion)){install.packages("rcompanion")}
+if(!require(psych)){install.packages("psych")}
+if(!require(DescTools)){install.packages("DescTools")}
+
+epsilonSquared(questions, group = "row")
+
+Input =(
+"Adopt      Always  Sometimes  Never
+Size
+Hobbiest         0          1      5
+Mom-and-pop      2          3      4
+Small            4          4      4
+Medium           3          2      0
+Large            2          0      0
+")
+
+Tabla = as.table(read.ftable(textConnection(Input)))
+
+class(Tabla)
+
+SomersDelta(as.data.table(questions)
+,
+            direction  = "column",
+            conf.level = 0.95)
+
+
+```
+
+```{r}
+
+for(i in 1:ncol(all_q)){
+  print(c(i, max(all_q[i])))
+}  # get the max correlation across a column 
+
+# however, polychoric correlations are conservative 
+
+
+trial <- questions %>% 
+  dplyr::select(Q26, Q44)
+
+asd <- polychoric(trial)
+
+asd <- tetrachoric(trial)
+?polychoric
+sum(questions[26] == questions[44])
+
+sp <- cor(questions, method = "spearman")  # 
+sp <- round(sp, 2)  # 2 decimal places
+sp[sp == 1] <- 0  # convert ones to zeros    
+sp <- data.frame(sp)
+
+kn <- cor(questions, method = "kendall")  # 
+kn <- round(kn, 2)  # 2 decimal places
+kn[kn == 1] <- 0  # convert ones to zeros    
+kn <- data.frame(kn)
+
+
+trial_all <- all_q %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(. < 0.3)) %>%
+  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+
+
+all_low <- row.names(trial_all) 
+
+foo <- function(){
+  a = {1}
+for (i in 1:ncol(questions)){
+  for (j in 1:ncol (questions)){
+    a = c(a, sum(questions[i] == questions[j])) 
+    
+#return(sum(questions[i] == questions[j]))
+  }}
+  return (a)
+}
+
+a <- foo()
+
+a[a ==950] <- 0
+
+sort(a, decreasing = T)
+
+#polychoric correlation produces more conservative results (produces lower absolute values).
+
+```
+
+
 ### References
+
+
+
