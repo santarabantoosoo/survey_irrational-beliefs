@@ -388,10 +388,13 @@ anova(mod_graded3, mod_graded4, verbose = T)
 
 # 4 models doesn't make sense, slight improvement
 
+# I though I would go for 3 factors  
 
-# I would go for 3 factors  
+# after checking analysis, I figured out that reliability is very poor in the 3rd domain.  
 
+# also I figure out that there is a huge change in ANOVA between one and two factors, but is greatly decreased from two to three factors, increase less than the removal of a single factor. 
 
+#get no of questions that load on domain three
 ```
 AIC BIC and log likelihood changed dramatically when using 2 factors instead of 1 
 
@@ -432,6 +435,7 @@ stat_49_graded3 <- M2(mod_49_graded3) # didn't use type C2 since I have too many
 ifit_ques49_graded <- mirt::itemfit(mod_49_graded3)
 
 ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
+
 
 ## removing 46
 # 
@@ -486,32 +490,139 @@ ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
 # 
 # 
 
+
+
+# try the model with 2 domians
+
+mod_49_graded2 <- mirt(ques49, 2, itemtype = "graded", TOL = 0.001)
+
+anova(mod_51_graded2, mod_49_graded2, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+
+anova(mod_49_graded2, mod_graded2, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+
+stat_49_graded2 <- M2(mod_49_graded2) # didn't use type C2 since I have too many dfs 
+ 
+ifit_ques49_graded <- mirt::itemfit(mod_49_graded2)
+
+ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
+
+Mod2.REL <- fscores(mod_49_graded2, method= "EAP", returnER = T)
+
+
 ```
 
+
+# try the model with gpcm 
+
+mod_49_graded3gpcm <- mirt(ques49, 3, itemtype = "gpcm", TOL = 0.001)
+
+anova(mod_51_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+
+anova(mod_49_graded3, mod_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+
+stat_49_graded3 <- M2(mod_49_graded3) # didn't use type C2 since I have too many dfs 
+ 
+ifit_ques49_graded <- mirt::itemfit(mod_49_graded3)
+
+ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
+
+
+
 ```{r}
-# foo <- summary(mod_51_graded3, rotate = "oblimin")
-# 
-# trial_all <- data.frame(foo$rotF) %>%
-#   rownames_to_column('gene') %>%
-#   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
-#   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
-# 
-# foo_v <- summary(mod_51_graded3, rotate = "varimax")
-# 
-# trial_all_v <- data.frame(foo_v$rotF) %>%
-#   rownames_to_column('gene') %>%
-#   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
-#   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+ # foo <- summary(mod_51_graded3, rotate = "oblimin")
+ # 
+ # trial_all <- data.frame(foo$rotF) %>%
+ #   rownames_to_column('gene') %>%
+ #   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+ #   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+ # 
+ # foo_v <- summary(mod_51_graded3, rotate = "varimax")
+ # 
+ # trial_all_v <- data.frame(foo_v$rotF) %>%
+ #   rownames_to_column('gene') %>%
+ #   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+ #   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
 
 
-foo <- summary(mod_49_graded3, rotate = "oblimin")
+foo <- summary(mod_49_graded3, rotate = "varimax")
+
+fo2 <- data.frame(foo$rotF)
+fo2[abs(fo2$F3) > abs(fo2$F2) & abs(fo2$F3) > abs(fo2$F1),]
+
+
+
+foo <- summary(mod_49_graded2, rotate = "varimax")
+
+fo2 <- data.frame(foo$rotF)
+f2_better <- fo2[abs(fo2$F2) > abs(fo2$F1),]
+
+sort(f2_better$F2)
+
+f1_better <- fo2[abs(fo2$F2) < abs(fo2$F1),]
+
+sort(f1_better$F1)
+
+foo <- summary(mod_49_graded2, rotate = "oblimin")
+
+fo2 <- data.frame(foo$rotF)
+f2_better <- fo2[abs(fo2$F2) > abs(fo2$F1),]
+
+sort(f2_better$F2)
+
+f1_better <- fo2[abs(fo2$F2) < abs(fo2$F1),]
+
+sort(f1_better$F1)
+
+check <- fo2[abs(fo2$F1) - abs(fo2$F2) < 0.05 & abs(fo2$F1) - abs(fo2$F2) > -0.05 ,]
+
+```
+
+Thus it seems that although we have 10 questions that load in domain 3, reliability is much better in two domains
+
+```{r}
+trial_all <- data.frame(foo$rotF) %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables.
+
+foo_v <- summary(mod_49_graded3, rotate = "varimax")
+
+trial_all_v <- data.frame(foo_v$rotF) %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables.
+
+foo <- summary(mod_49_graded2, rotate = "oblimin")
 
 trial_all <- data.frame(foo$rotF) %>%
   rownames_to_column('gene') %>%
   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
 
-foo_v <- summary(mod_49_graded3, rotate = "varimax")
+foo_v <- summary(mod_49_graded2, rotate = "varimax")
+
+trial_all_v <- data.frame(foo_v$rotF) %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+
+
+```
+
+Results here indicate that only 3 questions are to be removed from the model based on the two factor design 
+
+# try the idea on the model based only on the removal from Dr. Essam
+
+```{r}
+
+foo <- summary(mod_52_graded3, rotate = "oblimin")
+
+trial_all <- data.frame(foo$rotF) %>%
+  rownames_to_column('gene') %>%
+  filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+  column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
+
+foo_v <- summary(mod_52_graded3, rotate = "varimax")
 
 trial_all_v <- data.frame(foo_v$rotF) %>%
   rownames_to_column('gene') %>%
@@ -521,7 +632,6 @@ trial_all_v <- data.frame(foo_v$rotF) %>%
 
 
 ```
-
 
 
 
@@ -542,10 +652,10 @@ I have chosen graded response model since it appeared from Dr Essam talk that ma
 
 stat_51_graded3 <- M2(mod_51_graded3) # didn't use type C2 since I have too many dfs 
 
-
 #stat_gpcm <- M2(mod_gpcm)
 
 ```
+
 statistics reveal here that 3 factors is better than 2 factors 
 
 This even better after removing questions 51 and 11
@@ -577,6 +687,7 @@ ifit_ques51_graded[ifit_ques51_graded[, 5] < 0.05, ] ## misfitting items
 # ifit_ques53_graded[ifit_ques53_graded[, 5] < 0.05, ] ## misfitting items
 
 ```
+
 A single questions is slightly missfitting, and I would like to keep it. 
 
 
@@ -596,10 +707,6 @@ On examining the questions, it appears that some questions should in fact be rem
 On chaning the rotation to varimax, three questions are consistent (25,27,40)
 
 I will remove 25 and 40, since there phrasing is strange and I will recheck.
-
-```{r}
-
-```
 
 
 ```{R}
@@ -624,6 +731,20 @@ head(MDIFF(mod_51_graded3))
 ```{r}
 
 head(fscores(mod_51_graded3))
+rel_49 <- head(fscores(mod_49_graded3, method = "EAP", returnER = T))
+rel_51 <- head(fscores(mod_51_graded3, method = "EAP", returnER = T))  # emperical reliability
+
+
+
+
+rel.mirt <- function(x){
+  eap <- mirt::fscores(x, full.scores = T, scores.only = T, full.scores.SE = T)
+  e <- mean(eap[, 2]^2)
+  s <- var(eap[, 1])
+  1-(e/(s+e))
+}
+
+rel.mirt(mod_49_graded3)
 
 ```
 
