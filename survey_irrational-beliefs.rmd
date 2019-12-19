@@ -4,6 +4,10 @@ output: word_document
 bibliography: library.bib
 ---
 
+# to do: 
+
+make the cut-off 0.35 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = NA,
                       fig.height = 15, fig.width = 15)
@@ -56,6 +60,24 @@ library(corrr) # for correlation matrix, a really nice package
 library(ICSNP)   # for hotelling test
 library(readxl)
 library(mirt) # for fitting multidimentional IRT 
+
+#### functions ###
+
+rmdtbl <- function(df){
+  
+tbl_alpha <- autofit(theme_vanilla(flextable(df)))
+
+tbl_alpha <- bg(tbl_alpha, bg = "blue", part = "header")
+tbl_alpha <- color(tbl_alpha, color = "white", part = "header")
+
+
+bes <- align(tbl_alpha, align = "center")
+
+bes <- align_text_col(bes, align = "center")
+return(bes)
+
+}
+
 ```
 
 
@@ -253,6 +275,12 @@ ques48_5 <- questions %>%
 # ques44 <- questions %>% 
 #   dplyr::select(-c(6,9,10, 11,12,18,53,3,47, 55,44,50, 16,17,49,51, 40))
 
+# a new start with 2 domains only 
+
+#The reason is: a) low reliability in the third domain 
+#b) few questions in the third domain ( 9 or 10) 
+#c) change from 1 domain to 2 is dramatic, but change from three to four is equal to the change of a single question
+#d) result is obvious from the scree plot
 ```
 
 # MIRT
@@ -278,8 +306,8 @@ unidimensionality is violated
 no_fact <- nfactors(ques53, n = 4, cor = "poly", rotate = "oblimin")
 # vss = 2
 # MAP = 4
-# emperical BIC = 9
-# ss adjusted BIC = 20
+# emperical BIC = 4
+# ss adjusted BIC = 4
 
 
 ```
@@ -298,6 +326,7 @@ resvss <- vss(ques53, n.obs = nrow(ques53), plot = FALSE, rotate = "oblimin")
 
 
 ```{r}
+
 #trial one dimension
 
 faques53_one <- fa(ques53, 1, cor = "poly")
@@ -321,6 +350,9 @@ summary(faques53_four)
 
 # TLI : 0.664
 
+# However, all of these don't fit the model .. IRT is the choice
+
+
 ```
 
 
@@ -333,14 +365,15 @@ scree(Rdep, factors = FALSE)
 
 ```
 
-
+It seems obvious from the scree plot that two factors is a better option. 
 ```{r}
 
 plot(dim_ques, "screeplot")
+
+
 ```
 
-2 factors or 3  or 4 or 5 
-
+Again the scree plot points to 2 domains
 
 
 ```{r}
@@ -398,7 +431,8 @@ anova(mod_graded3, mod_graded4, verbose = T)
 ```
 AIC BIC and log likelihood changed dramatically when using 2 factors instead of 1 
 
-this is also true when comparing two and three factors.  I will use 3 factors but I will still confirm with Dr. Essam. 
+this is also not true when comparing two and three factors. It is minimum when comparing three with four 
+
 ```{r}
 # removing one by one 
 
@@ -417,25 +451,25 @@ this is also true when comparing two and three factors.  I will use 3 factors bu
 
 ### removing question 11
 
-mod_51_graded3 <- mirt(ques51, 3, itemtype = "graded", TOL = 0.001)
-
-anova(mod_51_graded3, mod_graded3, verbose = T) # p value is not significant, however, almost everything has improved to a relatively high extent
-# after removal of questions 51 and 11, improvement is even bigger. 
-
-### removing 25, 40
-
-mod_49_graded3 <- mirt(ques49, 3, itemtype = "graded", TOL = 0.001)
-
-anova(mod_51_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
-
-anova(mod_49_graded3, mod_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
-
-stat_49_graded3 <- M2(mod_49_graded3) # didn't use type C2 since I have too many dfs 
- 
-ifit_ques49_graded <- mirt::itemfit(mod_49_graded3)
-
-ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
-
+# mod_51_graded3 <- mirt(ques51, 3, itemtype = "graded", TOL = 0.001)
+# 
+# anova(mod_51_graded3, mod_graded3, verbose = T) # p value is not significant, however, almost everything has improved to a relatively high extent
+# # after removal of questions 51 and 11, improvement is even bigger. 
+# 
+# ### removing 25, 40
+# 
+# mod_49_graded3 <- mirt(ques49, 3, itemtype = "graded", TOL = 0.001)
+# 
+# anova(mod_51_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+# 
+# anova(mod_49_graded3, mod_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+# 
+# stat_49_graded3 <- M2(mod_49_graded3) # didn't use type C2 since I have too many dfs 
+#  
+# ifit_ques49_graded <- mirt::itemfit(mod_49_graded3)
+# 
+# ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
+# 
 
 ## removing 46
 # 
@@ -487,46 +521,441 @@ ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
 # anova(mod_48_5_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
 # 
 # stat_48_5_graded3 <- M2(mod_48_5_graded3) # didn't use type C2 since I have too many dfs 
-# 
-# 
 
+```
 
+# questions that Dr Essam insisted to have
+
+19 	الحسد هو سبب إصابة ابني بالسرطان
+27	أتفحص جسد أبنائي يومياً لاتأكد من عدم وجود ورم
+
+```{r}
 
 # try the model with 2 domians
 
+# starting from the 53 questions
+
+mod_53_graded2 <- mirt(ques53, 2, itemtype = "graded", TOL = 0.001)
+
+#anova(mod_53_graded2, mod_graded2, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+stat_53_graded2 <- M2(mod_53_graded2) # didn't use type C2 since I have too many dfs 
+
+rmdtbl(stat_53_graded2)
+
+```
+
+```{r}
+
+# ifit_ques53_graded2 <- mirt::itemfit(mod_53_graded2)
+# 
+# rmv_53 <- ifit_ques53_graded2[ifit_ques53_graded2[, 5] < 0.05, ] ## misfitting items
+# 
+# rmdtbl(rmv_53[, c(1, 5)])
+
+ift <- function(model){
+  a <- mirt::itemfit(model)
+  rmv <- a[a[, 5] < 0.05,]
+  return(rmdtbl(rmv[, c(1, 5)]))
+}
+
+ift(mod_53_graded2)
+```
+```{r}
+lo_load <- function(model, rotate){
+  foo <- summary(model, rotate = rotate, verbose = F)
+
+trial_all <- data.frame(foo$rotF) %>%
+   rownames_to_column('gene') %>%
+   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
+   column_to_rownames('gene') %>%  # get only questions that have correlation less than 0.3 with all other variables. 
+ rownames_to_column("Item")
+
+return(rmdtbl(trial_all))
+}
+
+lo_load(mod_53_graded2, "oblimin")
+```
+
+choices are 51,25,40 (wording) 56 (repeated ) 26 (repeated) 
+
+25	المنتجات الزراعية وحدها تسبب مرض السرطان
+
+26	اكره الناس لانهم لا يقدرون مشاعري 
+44	الاطباء لا يقدرون مشاعري كأم / كأب
+
+40	يجب أن أعتمد كلياً علي المستشفي في كل ما يتعلق باحتياجات ابني
+
+51	لا أمتنع عن تلبية كل مطالب ابني المريض
+
+3	أتجنب التعامل مع الناس منذ مرض ابني
+56	أخشي التعامل مع الناس بعد إصابة ابني بالمرض
+
+### I will remove 26 - 56 - 61
+
+```{r}
+
+ques50 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 26, 56, 51))
+
+mod_50_graded2 <- mirt(ques50, 2, itemtype = "graded", TOL = 0.001)
+
+rmdtbl(anova(mod_50_graded2, mod_53_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
+
+```{r}
+stat_50_graded2 <- M2(mod_50_graded2) # didn't use type C2 since I have too many dfs 
+
+rmdtbl(bind_rows(stat_50_graded2, stat_53_graded2))
+# possible a deterioration, but we need to remove the question
+```
+
+```{r}
+lo_load(mod_50_graded2, "oblimin")
+
+```
+
+```{r}
+ift(mod_50_graded2)
+
+```
+
+nothing wrong with wording. P value is slightly significant. I will start with loadings
+
+# Remove 25
+
+```{r}
+
+ques49 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 26, 56, 51, 25))
+
 mod_49_graded2 <- mirt(ques49, 2, itemtype = "graded", TOL = 0.001)
 
-anova(mod_51_graded2, mod_49_graded2, verbose = T) # p value is not significant, however, almost everything has imrpoved 
+rmdtbl(anova(mod_49_graded2, mod_50_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
 
-anova(mod_49_graded2, mod_graded2, verbose = T) # p value is not significant, however, almost everything has imrpoved 
 
+```{r}
 stat_49_graded2 <- M2(mod_49_graded2) # didn't use type C2 since I have too many dfs 
- 
-ifit_ques49_graded <- mirt::itemfit(mod_49_graded2)
 
-ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
+rmdtbl(bind_rows(stat_49_graded2, stat_50_graded2))
+# possible a deterioration, but we need to remove the question
+```
 
-Mod2.REL <- fscores(mod_49_graded2, method= "EAP", returnER = T)
+```{r}
+lo_load(mod_49_graded2, "oblimin")
 
+```
+
+```{r}
+ift(mod_49_graded2)
+
+```
+can't remove 19 
+
+# remove 11 
+
+```{r}
+
+ques48 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 26, 56, 51, 25, 11))
+
+mod_48_graded2 <- mirt(ques48, 2, itemtype = "graded", TOL = 0.001)
+
+rmdtbl(anova(mod_48_graded2, mod_49_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
+
+```{r}
+stat_48_graded2 <- M2(mod_48_graded2) # didn't use type C2 since I have too many dfs 
+
+rmdtbl(bind_rows(stat_48_graded2, stat_49_graded2))
+# possible a deterioration, but we need to remove the question
+```
+
+```{r}
+lo_load(mod_48_graded2, "oblimin")
+lo_load(mod_48_graded2, "varimax")
+
+```
+
+item 15 has been added to oblimin but not to varimax. loading is 0.299
+wording is ok .. I will keep it
+
+```{r}
+ift(mod_48_graded2)
 
 ```
 
 
-# try the model with gpcm 
-
-mod_49_graded3gpcm <- mirt(ques49, 3, itemtype = "gpcm", TOL = 0.001)
-
-anova(mod_51_graded3, mod_49_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
-
-anova(mod_49_graded3, mod_graded3, verbose = T) # p value is not significant, however, almost everything has imrpoved 
-
-stat_49_graded3 <- M2(mod_49_graded3) # didn't use type C2 since I have too many dfs 
- 
-ifit_ques49_graded <- mirt::itemfit(mod_49_graded3)
-
-ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
+# remove 40
 
 
+```{r}
+ques47 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 26, 56, 51, 25, 11, 40))
+
+mod_47_graded2 <- mirt(ques47, 2, itemtype = "graded", TOL = 0.001)
+
+rmdtbl(anova(mod_47_graded2, mod_49_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
+
+```{r}
+stat_47_graded2 <- M2(mod_47_graded2) # didn't use type C2 since I have too many dfs 
+
+rmdtbl(bind_rows(stat_47_graded2, stat_48_graded2))
+# possible a deterioration, but we need to remove the question
+```
+
+```{r}
+lo_load(mod_47_graded2, "oblimin")
+lo_load(mod_47_graded2, "varimax")
+
+```
+
+
+```{r}
+ift(mod_47_graded2)
+
+```
+14	أشعر بالذنب لتقصيري في حماية ابني من المرض
+22	زوجي ( زوجتي ) يعتبرني المسئول الوحيد عن مرض ابني
+35	أكره زوجي ( زوجتي ) لمسئوليته عن مرض ابني
+
+for question 22, 83% responsed by لا ترد 
+
+for question 35, 87.6% responded by لا ترد 
+
+will remove 22 since p value is more significant. In addition, "only" I think is somehow misleading.
+
+# remove 22
+
+
+```{r}
+ques46 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 26, 56, 51, 25, 11, 40, 22))
+
+mod_46_graded2 <- mirt(ques46, 2, itemtype = "graded", TOL = 0.001)
+
+rmdtbl(anova(mod_46_graded2, mod_47_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
+
+```{r}
+stat_46_graded2 <- M2(mod_46_graded2) # didn't use type C2 since I have too many dfs 
+
+rmdtbl(bind_rows(stat_46_graded2, stat_47_graded2))
+# possible a deterioration, but we need to remove the question
+```
+
+```{r}
+lo_load(mod_46_graded2, "oblimin")
+lo_load(mod_46_graded2, "varimax")
+
+```
+
+
+```{r}
+ift(mod_46_graded2)
+
+```
+
+
+# remove 2
+
+2	أشعر أن من حقي أن يحزن الناس لحزني علي  أبني 
+
+```{r}
+ques45 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2))
+
+mod_45_graded2 <- mirt(ques45, 2, itemtype = "graded", TOL = 0.001)
+
+rmdtbl(anova(mod_45_graded2, mod_46_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
+
+```{r}
+stat_45_graded2 <- M2(mod_45_graded2) # didn't use type C2 since I have too many dfs 
+
+rmdtbl(bind_rows(stat_45_graded2, stat_46_graded2))
+# possible a deterioration, but we need to remove the question
+```
+
+```{r}
+lo_load(mod_45_graded2, "oblimin")
+lo_load(mod_45_graded2, "varimax")
+
+```
+
+
+```{r}
+ift(mod_45_graded2)
+
+```
+
+47	أخاف أن يصاب ابني بمرض آخر نتيجة العلاج
+53	أخاف من المضاعفات المترتبة عن العلاج 
+
+ -------- 47 was previously removed
+
+29	أشعر بالوصمة والعار لمرض ابني بالسرطان   must keep
+
+47 I think is more clear to the irrational thoughts ... for 53 every patient will experience side effects
+
+# exchange 47 with 53
+
+
+```{r}
+ques45_2 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2))
+
+mod_45_2_graded2 <- mirt(ques45_2, 2, itemtype = "graded", TOL = 0.001)
+
+rmdtbl(anova(mod_45_2_graded2, mod_45_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
+
+```{r}
+stat_45_2_graded2 <- M2(mod_45_2_graded2) # didn't use type C2 since I have too many dfs 
+
+rmdtbl(bind_rows(stat_45_2_graded2, stat_45_graded2))
+```
+
+```{r}
+lo_load(mod_45_2_graded2, "oblimin")
+lo_load(mod_45_2_graded2, "varimax")
+
+```
+
+
+```{r}
+ift(mod_45_2_graded2)
+
+```
+
+36	أتشاجر مع الممرضة إذا تأخرت عن تلبية ندائي 
+
+I think yes, the questions is misleading.
+
+# remove 36
+
+```{r}
+ques44 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36))
+
+mod_44_graded2 <- mirt(ques44, 2, itemtype = "graded", TOL = 0.001)
+
+rmdtbl(anova(mod_44_graded2, mod_45_2_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
+
+```{r}
+stat_44_graded2 <- M2(mod_44_graded2) # didn't use type C2 since I have too many dfs 
+
+rmdtbl(bind_rows(stat_44_graded2, stat_45_2_graded2))
+```
+
+```{r}
+lo_load(mod_44_graded2, "oblimin")
+lo_load(mod_44_graded2, "varimax")
+
+```
+
+
+```{r}
+ift(mod_44_graded2)
+
+```
+14	أشعر بالذنب لتقصيري في حماية ابني من المرض 
+
+I think I will keep this question
+
+Question 1
+
+1	أعتقد بأن الشفاء من الله ولا أهمية للطب أو العلاج  
+
+I think can be misinterpreted as something positive. (كل شيء بمشيئة الله)
+
+After removal, the model deteriorates. I think I will keep it. 
+
+In addition, I think this item is unique. 
+
+In addition, I have tried gpcm, but the improvement was minimal. Also a large number of questions were loading very poorly
+
+# Final decision 
+
+keep 44 questions
+
+remove : (7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36)
+
+
+
+```{r}
+# mod_44_graded2_gpcm <- mirt(ques44, 2, itemtype = "gpcm", TOL = 0.001)
+# rmdtbl(anova(mod_44_graded2_gpcm, mod_44_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
+
+```{r}
+# stat_44_graded2_gpcm <- M2(mod_44_graded2_gpcm) # didn't use type C2 since I have too many dfs 
+# 
+# rmdtbl(bind_rows(stat_44_graded2_gpcm, stat_44_graded2))
+```
+
+```{r}
+# lo_load(mod_44_graded2_gpcm, "oblimin")
+# lo_load(mod_44_graded2_gpcm, "varimax")
+
+```
+
+
+```{r}
+#ift(mod_44_graded2_gpcm)
+
+```
+
+
+
+```{r}
+# ques43 <- questions %>% 
+#   dplyr::select(-c(7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36, 1))
+# 
+# mod_43_graded2 <- mirt(ques43, 2, itemtype = "graded", TOL = 0.001)
+# 
+# rmdtbl(anova(mod_43_graded2, mod_44_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
+
+```{r}
+# stat_43_graded2 <- M2(mod_43_graded2) # didn't use type C2 since I have too many dfs 
+# 
+# rmdtbl(bind_rows(stat_43_graded2, stat_44_graded2))
+```
+
+```{r}
+# lo_load(mod_43_graded2, "oblimin")
+# lo_load(mod_43_graded2, "varimax")
+
+```
+
+
+```{r}
+# ift(mod_43_graded2)
+
+```
+
+
+```{r}
+
+summary(mod_44_graded2)
+
+Mod2.REL <- fscores(mod_44_graded2, method= "EAP", returnER = T)
+
+```
+
+which questions in which domain?
 
 ```{r}
  # foo <- summary(mod_51_graded3, rotate = "oblimin")
@@ -543,28 +972,10 @@ ifit_ques49_graded[ifit_ques49_graded[, 5] < 0.05, ] ## misfitting items
  #   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
  #   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
 
-
-foo <- summary(mod_49_graded3, rotate = "varimax")
-
-fo2 <- data.frame(foo$rotF)
-fo2[abs(fo2$F3) > abs(fo2$F2) & abs(fo2$F3) > abs(fo2$F1),]
-
-
-
-foo <- summary(mod_49_graded2, rotate = "varimax")
+foo <- summary(mod_44_graded2, rotate = "oblimin", verbose = F)
 
 fo2 <- data.frame(foo$rotF)
-f2_better <- fo2[abs(fo2$F2) > abs(fo2$F1),]
 
-sort(f2_better$F2)
-
-f1_better <- fo2[abs(fo2$F2) < abs(fo2$F1),]
-
-sort(f1_better$F1)
-
-foo <- summary(mod_49_graded2, rotate = "oblimin")
-
-fo2 <- data.frame(foo$rotF)
 f2_better <- fo2[abs(fo2$F2) > abs(fo2$F1),]
 
 sort(f2_better$F2)
@@ -574,6 +985,21 @@ f1_better <- fo2[abs(fo2$F2) < abs(fo2$F1),]
 sort(f1_better$F1)
 
 check <- fo2[abs(fo2$F1) - abs(fo2$F2) < 0.05 & abs(fo2$F1) - abs(fo2$F2) > -0.05 ,]
+
+
+foo_v <- summary(mod_44_graded2, rotate = "varimax")
+
+fo2_v <- data.frame(foo_v$rotF)
+
+f2_better_v <- fo2_v[abs(fo2_v$F2) > abs(fo2_v$F1),]
+
+sort(f2_better$F2)
+
+f1_better_v <- fo2_v[abs(fo2_v$F2) < abs(fo2_v$F1),]
+
+sort(f1_better$F1)
+
+check_v <- fo2_v[abs(fo2_v$F1) - abs(fo2_v$F2) < 0.05 & abs(fo2_v$F1) - abs(fo2_v$F2) > -0.05 ,]
 
 ```
 
