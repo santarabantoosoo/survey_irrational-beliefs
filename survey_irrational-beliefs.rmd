@@ -6,7 +6,7 @@ bibliography: library.bib
 
 # to do: 
 
-make the cut-off 0.35 
+make the cut-off 0.35 and consider cross loadings 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = NA,
@@ -524,7 +524,7 @@ this is also not true when comparing two and three factors. It is minimum when c
 
 ```
 
-# questions that Dr Essam insisted to have
+# questions that Dr Essam insisted to keep
 
 19 	الحسد هو سبب إصابة ابني بالسرطان
 27	أتفحص جسد أبنائي يومياً لاتأكد من عدم وجود ورم
@@ -590,7 +590,7 @@ choices are 51,25,40 (wording) 56 (repeated ) 26 (repeated)
 3	أتجنب التعامل مع الناس منذ مرض ابني
 56	أخشي التعامل مع الناس بعد إصابة ابني بالمرض
 
-### I will remove 26 - 56 - 61
+### I will remove 26 - 56 - 51
 
 ```{r}
 
@@ -891,8 +891,206 @@ keep 44 questions
 remove : (7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36)
 
 
+```{r}
+lo_35 <- function(model, rotate){
+  foo <- summary(model, rotate = rotate, verbose = F)
+
+trial_all <- data.frame(foo$rotF) %>%
+   rownames_to_column('gene') %>%
+   filter_if(is.numeric, all_vars(abs(.) < 0.35)) %>%
+   column_to_rownames('gene') %>%  # get only questions that have correlation less than 0.3 with all other variables. 
+ rownames_to_column("Item")
+
+return(rmdtbl(trial_all))
+}
+
+
+lo_35(mod_44_graded2, "oblimin")
+
+lo_35(mod_44_graded2, "varimax")
+
+foo <- summary(mod_44_graded2, rotate = "oblimin", verbose = F)
+
+fo2 <- data.frame(foo$rotF)
+
+f2_better <- fo2[abs(fo2$F2) > abs(fo2$F1),]
+
+sort(f2_better$F2)
+
+f1_better <- fo2[abs(fo2$F2) < abs(fo2$F1),]
+
+sort(f1_better$F1)
+
+check <- fo2[abs(fo2$F1) - abs(fo2$F2) < 0.05 & abs(fo2$F1) - abs(fo2$F2) > -0.05 ,]
+
+foo_v <- summary(mod_44_graded2, rotate = "varimax")
+
+fo2_v <- data.frame(foo_v$rotF)
+
+f2_better_v <- fo2_v[abs(fo2_v$F2) > abs(fo2_v$F1),]
+
+sort(f2_better$F2)
+
+f1_better_v <- fo2_v[abs(fo2_v$F2) < abs(fo2_v$F1),]
+
+sort(f1_better$F1)
+
+check_v <- fo2_v[abs(fo2_v$F1) - abs(fo2_v$F2) < 0.05 & abs(fo2_v$F1) - abs(fo2_v$F2) > -0.05 ,]
+
+```
+
+4/14/15/52 These are the problematic questions.
+
+4	مرض ابني عقاب من الله علي ما ارتكبته من ذنوب
+
+can't remove this questions
+
+52	الحل الوحيد لعلاج السرطان هو استئصال الورم 
+
+what if the patient has leukemia ?
+
+# remove 52 
+  
+```{r}
+ques43 <- questions %>% 
+  dplyr::select(-c(7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36, 52))
+
+mod_43_graded2 <- mirt(ques43, 2, itemtype = "graded", TOL = 0.001)
+
+rmdtbl(anova(mod_43_graded2, mod_44_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+```
+
 
 ```{r}
+stat_43_graded2 <- M2(mod_43_graded2) # didn't use type C2 since I have too many dfs 
+
+rmdtbl(bind_rows(stat_43_graded2, stat_44_graded2))
+```
+
+```{r}
+lo_load(mod_43_graded2, "oblimin")
+lo_load(mod_43_graded2, "varimax")
+
+```
+
+
+```{r}
+ift(mod_43_graded2)
+
+```
+
+### Domain 2 questions
+
+```{r}
+foo <- summary(mod_43_graded2, rotate = "oblimin", verbose = F)
+
+fo2 <- data.frame(foo$rotF)
+
+f2_better <- data.frame(fo2[abs(fo2$F2) > abs(fo2$F1),])
+
+f2_better <- rownames_to_column(f2_better)
+
+names(f2_better) <- c("Item", "Domain_1_loadings", "Domain_2_loadings")
+
+#sort(f2_better$Domain_2_loadings)
+
+rmdtbl(f2_better)
+```
+
+### Domain 1 questions
+
+```{r}
+f1_better <- data.frame(fo2[abs(fo2$F2) < abs(fo2$F1),])
+
+f1_better <- rownames_to_column(f1_better)
+
+names(f1_better) <- c("Item", "Domain_1_loadings", "Domain_2_loadings")
+
+rmdtbl(f1_better)
+
+```
+### Items to decide
+
+```{r}
+#sort(f1_better$F1)
+
+check <- fo2[abs(fo2$F1) - abs(fo2$F2) < 0.05 & abs(fo2$F1) - abs(fo2$F2) > -0.05 ,]
+
+check <- rownames_to_column(check)
+
+rmdtbl(check)
+
+# foo_v <- summary(mod_43_graded2, rotate = "varimax")
+# 
+# fo2_v <- data.frame(foo_v$rotF)
+# 
+# f2_better_v <- fo2_v[abs(fo2_v$F2) > abs(fo2_v$F1),]
+# 
+# sort(f2_better$F2)
+# 
+# f1_better_v <- fo2_v[abs(fo2_v$F2) < abs(fo2_v$F1),]
+# 
+# sort(f1_better$F1)
+# 
+# check_v <- fo2_v[abs(fo2_v$F1) - abs(fo2_v$F2) < 0.05 & abs(fo2_v$F1) - abs(fo2_v$F2) > -0.05 ,]
+
+```
+
+### Reliability 
+
+```{r}
+
+summary(mod_43_graded2)
+
+Mod44.REL <- fscores(mod_44_graded2, method= "EAP", returnER = T)
+
+Mod43.REL <- bind_rows(fscores(mod_43_graded2, method= "EAP", returnER = T))
+
+rel_compare <- bind_rows(Mod44.REL, Mod43.REL)
+
+rmdtbl(Mod43.REL)
+
+```
+
+
+
+```{r}
+# remove 15 ( wan't beneficial)
+
+# ques42 <- questions %>% 
+#   dplyr::select(-c(7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36, 52, 15))
+# 
+# mod_42_graded2 <- mirt(ques42, 2, itemtype = "graded", TOL = 0.001)
+# 
+# rmdtbl(anova(mod_42_graded2, mod_43_graded2, verbose = T)) 
+
+```
+
+
+```{r}
+# stat_42_graded2 <- M2(mod_42_graded2) # didn't use type C2 since I have too many dfs 
+# 
+# rmdtbl(bind_rows(stat_42_graded2, stat_43_graded2))
+```
+
+```{r}
+# lo_load(mod_42_graded2, "oblimin")
+# lo_load(mod_42_graded2, "varimax")
+
+```
+
+
+```{r}
+# ift(mod_42_graded2)
+
+
+```
+
+
+
+```{r}
+# gpcm 
+
 # mod_44_graded2_gpcm <- mirt(ques44, 2, itemtype = "gpcm", TOL = 0.001)
 # rmdtbl(anova(mod_44_graded2_gpcm, mod_44_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
 ```
@@ -919,6 +1117,8 @@ remove : (7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36)
 
 
 ```{r}
+
+# removing question 1
 # ques43 <- questions %>% 
 #   dplyr::select(-c(7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36, 1))
 # 
@@ -947,15 +1147,6 @@ remove : (7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36)
 ```
 
 
-```{r}
-
-summary(mod_44_graded2)
-
-Mod2.REL <- fscores(mod_44_graded2, method= "EAP", returnER = T)
-
-```
-
-which questions in which domain?
 
 ```{r}
  # foo <- summary(mod_51_graded3, rotate = "oblimin")
@@ -971,35 +1162,6 @@ which questions in which domain?
  #   rownames_to_column('gene') %>%
  #   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
  #   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
-
-foo <- summary(mod_44_graded2, rotate = "oblimin", verbose = F)
-
-fo2 <- data.frame(foo$rotF)
-
-f2_better <- fo2[abs(fo2$F2) > abs(fo2$F1),]
-
-sort(f2_better$F2)
-
-f1_better <- fo2[abs(fo2$F2) < abs(fo2$F1),]
-
-sort(f1_better$F1)
-
-check <- fo2[abs(fo2$F1) - abs(fo2$F2) < 0.05 & abs(fo2$F1) - abs(fo2$F2) > -0.05 ,]
-
-
-foo_v <- summary(mod_44_graded2, rotate = "varimax")
-
-fo2_v <- data.frame(foo_v$rotF)
-
-f2_better_v <- fo2_v[abs(fo2_v$F2) > abs(fo2_v$F1),]
-
-sort(f2_better$F2)
-
-f1_better_v <- fo2_v[abs(fo2_v$F2) < abs(fo2_v$F1),]
-
-sort(f1_better$F1)
-
-check_v <- fo2_v[abs(fo2_v$F1) - abs(fo2_v$F2) < 0.05 & abs(fo2_v$F1) - abs(fo2_v$F2) > -0.05 ,]
 
 ```
 
