@@ -1,34 +1,51 @@
 ---
 title: "survey_irrational-beliefs"
-output: word_document
+output: html_notebook
 bibliography: library.bib
 ---
 
 # to do: 
 
-make the cut-off 0.35 and consider cross loadings 
+remove libraries not needed
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = NA,
                       fig.height = 15, fig.width = 15)
 #this chunk is used to silence code, warnings, comments and hash from appearing in output.
+
+
 ```
 
+Division of the paper 
+
+mention item response theory in the introduction. why it is important. 
+
+# Items that I suggest adding to the introduction 
+
+Arguably, one of the more relevant IRT models to health-based research is the graded
+response model [@samejima1997; @samejima1969]
 
 # Statistical analysis 
 
 
-R packages used in the analysis were psych version 1.8.4 for factor analysis , HH version 3.1-35 for plotting likert data, factorMerger version 0.3.6 for merging factor levels and broom version 0.5.0 for tidying up model coefficients. 
+R Foundation for Statistical Computing, Vienna, Austria version 3.6.0 was used for the statistical analysis. Multidimensional item response theory package version 1.31 [@chalmersMirtMultidimensionalItem2012] using Unconditional maximum likelihood estimator with expectation–maximization (EM) algorithm was used for the analysis. An exploratory multidimensional extension of the graded response model [@samejima1997; @samejima1969] was used to model the data. Exclusions of questions from the tool was based both on principal investigator opinion, factor loading as well as item fit tests. M2 fit statsitics were used to assess model fit and ANOva was used to compare different models' performance. Other R packages used were HH version 3.1-35 for plotting likert data and 
 
 
 # Results
 
 
+The irrational beliefs tool contains three response options per question and would
+therefore have two thresholds (difficulty parameters) estimated for each item. The difficulty
+parameter lends insight into the relationship between the latent trait (e.g. level of irrational thoughts) and the response categories chosen for the items. For  more technical
+details of the graded response model, please see the online appendix.
+
+Online appendix include two Rmarkdown files. The first one is a step by step exclusion of questions with justification till we reach the 43 questions. The second file includes detailed assessment of our multidimension graded response model containing the 43 questions. 
 
 ```{r}
 options(scipen = 999)
-options("mc.cores"=2) 
+options("mc.cores"=2) # choosing the number of cores that optimizes performance. 
 
+library(packrat) # for detecting unused packages. But I failed
 library(data.table)
 library(lavaan)
 library(psych)
@@ -36,7 +53,6 @@ library(factorMerger) # for post-hoc analysis for MANOVA
 library(mvoutlier) # detecting multivariate outliers
 library(micompr) # for testing for normality and homogenity of variance in MANOVA
 library(mvnormtest)  # for shapiro test of normality for MANOVA
-library(table1)
 library(tidyverse)
 library(FactoMineR)
 library(factoextra)
@@ -58,22 +74,26 @@ library(citr) # for citation
 library(flextable) # nice tables
 library(corrr) # for correlation matrix, a really nice package
 library(ICSNP)   # for hotelling test
-library(readxl)
+library(readxl) # for importing data
 library(mirt) # for fitting multidimentional IRT 
+
+#unused_packages(project = d)
 
 #### functions ###
 
 rmdtbl <- function(df){
+  
+  # using flextable package to produce customized elegant tables directly into microsoft word
   
 tbl_alpha <- autofit(theme_vanilla(flextable(df)))
 
 tbl_alpha <- bg(tbl_alpha, bg = "blue", part = "header")
 tbl_alpha <- color(tbl_alpha, color = "white", part = "header")
 
-
 bes <- align(tbl_alpha, align = "center")
 
 bes <- align_text_col(bes, align = "center")
+
 return(bes)
 
 }
@@ -289,6 +309,25 @@ ques48_5 <- questions %>%
 
 ##### Dimentionality assessment
 
+Stout et al. (1996) suggested that D(P) ≤ 0.1 reflects that the data are essentially unidimensional while D(P) ≤ 1.0 indicates the presence of “sizable dimensionality” (p. 348). Roussos and Ozbek (2006) constructed a more precise yardstick for the DETECT index, with proposed hatch marks for essential unidimensionality/weak multidimensionality (D(P) ≤ 0.2), weak to moderate multidimensionality (0.2 < D(P) ≤ 0.4, moderate to large multidimensionality (0.4 < D(P) ≤ 1.0), and strong multidimensionality (D(P) > 1.0). 
+```{r}
+expl.detect(ques43, score, 2)
+
+conf.detect(ques43, score, 2)
+
+# check that these items are like what u have got through the other method. 
+
+
+
+```
+
+# The _score_ argument is an ability estimate (e.g., summed score, mean score, or IRT-scaled score)._nclusters_ 
+# indicates the number of hypothesized clusters, just as in exploratory factor analysis, while _itemcluster_
+# specifies the associated cluster of each item. Run ?expl.detect, ?conf.detect, or ?detect.index for further 
+# information on running the DETECT procedure and interpreting the results.
+
+
+
 ```{r}
 library("MPsychoR")
 library("mirt")
@@ -303,12 +342,11 @@ unidimensionality is violated
 ### check number of factors 
 
 ```{r}
-no_fact <- nfactors(ques53, n = 4, cor = "poly", rotate = "oblimin")
+no_fact <- nfactors(ques53, n = 4, cor = "poly", rotate = "oblimin") # we set the max number of factors to 4
 # vss = 2
 # MAP = 4
 # emperical BIC = 4
 # ss adjusted BIC = 4
-
 
 ```
 
@@ -324,30 +362,29 @@ resvss <- vss(ques53, n.obs = nrow(ques53), plot = FALSE, rotate = "oblimin")
 ```
 
 
-
 ```{r}
 
 #trial one dimension
-
-faques53_one <- fa(ques53, 1, cor = "poly")
-summary(faques53_one)
-# very very low TLI 
-
-faques53_two <- fa(ques53, 2, cor = "poly")
-summary(faques53_two)
-
-
-# improved estimates 
-# TLI : 0.625
-
-faques53_three <- fa(ques53, 3, cor = "poly")
-summary(faques53_three)
-
-# TLI : 0.646
-
-faques53_four <- fa(ques53, 4, cor = "poly")
-summary(faques53_four)
-
+# 
+# faques53_one <- fa(ques53, 1, cor = "poly")
+# summary(faques53_one)
+# # very very low TLI 
+# 
+# faques53_two <- fa(ques53, 2, cor = "poly")
+# summary(faques53_two)
+# 
+# 
+# # improved estimates 
+# # TLI : 0.625
+# 
+# faques53_three <- fa(ques53, 3, cor = "poly")
+# summary(faques53_three)
+# 
+# # TLI : 0.646
+# 
+# faques53_four <- fa(ques53, 4, cor = "poly")
+# summary(faques53_four)
+# 
 # TLI : 0.664
 
 # However, all of these don't fit the model .. IRT is the choice
@@ -366,6 +403,7 @@ scree(Rdep, factors = FALSE)
 ```
 
 It seems obvious from the scree plot that two factors is a better option. 
+
 ```{r}
 
 plot(dim_ques, "screeplot")
@@ -389,9 +427,10 @@ parallel8 <- fa.parallel(ques53,nfactors = 8, cor = "poly" )
 # documentation :
 # A sad observation about parallel analysis is that it is sensitive to sample size. That is, for large data sets, the eigen values of random data are very close to 1. This will lead to different estimates of the number of factors as a function of sample size. Consider factor structure of the bfi data set (the first 25 items are meant to represent a five factor model). For samples of 200 or less, parallel analysis suggests 5 factors, but for 1000 or more, six factors and components are indicated. This is not due to an instability of the eigen values of the real data, but rather the closer approximation to 1 of the random data as n increases.
 # 
-# Although with nfactors=1, 6 factors are suggested, when specifying nfactors =5, parallel analysis of the bfi suggests 12 factors should be extracted
+# for our case, although with nfactors=1, 6 factors are suggested, when specifying nfactors =5, parallel analysis of the bfi suggests 12 factors should be extracted
 
 ```
+
 18 factors and 6 components. 
 
 
@@ -399,8 +438,11 @@ parallel8 <- fa.parallel(ques53,nfactors = 8, cor = "poly" )
 
 ### IFA method 
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 # mirt fits a maximum likelihood (or maximum a posteriori) factor analysis model to any mixture of dichotomous and polytomous data under the item response theory paradigm. Thus I don't have to specify "poly"
+
+model <- c("1 dimension", "2 dimensions")
+
 mod_graded <- mirt(ques53, 1, itemtype = "graded")
 mod_graded2 <- mirt(ques53, 2, itemtype = "graded", TOL = 0.001)
 
@@ -421,17 +463,27 @@ anova(mod_graded3, mod_graded4, verbose = T)
 
 # 4 models doesn't make sense, slight improvement
 
-# I though I would go for 3 factors  
-
 # after checking analysis, I figured out that reliability is very poor in the 3rd domain.  
 
 # also I figure out that there is a huge change in ANOVA between one and two factors, but is greatly decreased from two to three factors, increase less than the removal of a single factor. 
 
 #get no of questions that load on domain three
-```
-AIC BIC and log likelihood changed dramatically when using 2 factors instead of 1 
 
-this is also not true when comparing two and three factors. It is minimum when comparing three with four 
+# mod1_v_mod2 <- rbind(M2(mod_graded), M2(mod_graded2))
+# 
+# rmdtbl(cbind(model, mod1_v_mod2))
+```
+
+
+```{r}
+rmdtbl( cbind(model, anova(mod_graded, mod_graded2, verbose = F)))
+
+```
+
+
+AIC BIC and log likelihood changed dramatically when using 2 factors instead of 1. The change was not large when chaning from two to three.  
+
+Due to the consensus across indices, the multidimensional model will be considered for further evaluation.
 
 ```{r}
 # removing one by one 
@@ -823,6 +875,7 @@ stat_45_2_graded2 <- M2(mod_45_2_graded2) # didn't use type C2 since I have too 
 rmdtbl(bind_rows(stat_45_2_graded2, stat_45_graded2))
 ```
 
+
 ```{r}
 lo_load(mod_45_2_graded2, "oblimin")
 lo_load(mod_45_2_graded2, "varimax")
@@ -955,17 +1008,28 @@ what if the patient has leukemia ?
 ques43 <- questions %>% 
   dplyr::select(-c(7, 12, 23, 30, 9, 53, 16, 49, 26, 56, 51, 25, 11, 40, 22, 2, 36, 52))
 
-mod_43_graded2 <- mirt(ques43, 2, itemtype = "graded", TOL = 0.001)
+mod_43_graded2 <- mirt(ques43, 2, itemtype = "graded", TOL = 0.001, SE = T)
 
 rmdtbl(anova(mod_43_graded2, mod_44_graded2, verbose = T)) # p value is not significant, however, almost everything has imrpoved 
+
+extract.mirt(mod_43_graded2, 'DIC')
+extract.mirt(mod_44_graded2, 'DIC')
+
+
 ```
+
+AIC, BIC, and the LR test are based on maximum likelihood estimation of the model parameters and are not suitable when Bayesian estimation has been used (Lin & Dayton, 1997). In the context of MCMC estimation, models can be compared via the deviance information criterion (DIC; Spiegelhalter, Best, Carlin, & van der Linde, 2002). Like the AIC and BIC, this index assesses goodness of fit and includes a penalty for complexity, but DIC differs by employing a Bayesian (rather than likelihood-based) measure of fit known as the posterior mean deviance. As with other information criteria, the better model is the one with the lower DIC.
 
 
 ```{r}
 stat_43_graded2 <- M2(mod_43_graded2) # didn't use type C2 since I have too many dfs 
 
 rmdtbl(bind_rows(stat_43_graded2, stat_44_graded2))
+
 ```
+
+Adequate model fit is indicated by RMSEA ≤0.05/ (k-1) where K is the number of response categories (Maydeu-Olivares & Joe, 2014). Here there is a little deviation from this cut-off. Maydeu-Olivares (2013) comments, however, that more work is needed in the area of IRT fit assessment, particularly with regard to the performance of M2 and other fit statistics in applied settings rather than simulation studies.
+
 
 ```{r}
 lo_load(mod_43_graded2, "oblimin")
@@ -978,6 +1042,61 @@ lo_load(mod_43_graded2, "varimax")
 ift(mod_43_graded2)
 
 ```
+
+
+```{r}
+
+fs <- coef(mod_43_graded2, simplify = T, as.data.frame = F)
+
+fes <-rownames_to_column(data.frame(fs$items))  
+
+fes %>% 
+  arrange(a1) %>% 
+  head()
+
+#items 59 and 60 again are the easiest to answer with 1 
+
+fes %>% 
+  arrange(desc(a1)) %>% 
+  head()
+
+# items 34 and 31 are the easiest to answer with 3 
+
+
+fes %>% 
+  arrange(desc(a2)) %>% 
+  head()
+
+#items 39 and 35 are the easiest to answer with 3
+
+fes %>% 
+  arrange(a2) %>% 
+  head()
+
+# items 59 and 60 again are easiest to answer with 1 
+
+# no estimates with extreme values 
+
+
+```
+
+```{r}
+conf <- coef(cmod, simplify = T, as.data.frame = F)
+
+conf2 <-rownames_to_column(data.frame(conf$items))  
+
+sort(conf2$a1)
+sort(conf2$a2)
+
+```
+
+for the first domain, five items are out of the range of Good” discrimination parameters
+for the second domain, only a single item is out of the range of the Good” discrimination parameters (de
+Ayala, 2009)
+
+No items are too steep, but the bad items are too flat. 
+
+
 
 ### Domain 2 questions
 
@@ -1008,7 +1127,9 @@ names(f1_better) <- c("Item", "Domain_1_loadings", "Domain_2_loadings")
 
 rmdtbl(f1_better)
 
+
 ```
+
 ### Items to decide
 
 ```{r}
@@ -1036,6 +1157,126 @@ rmdtbl(check)
 
 ```
 
+### confirmatory model
+
+```{r}
+
+# match(f1_better$Item, names(ques43)) # get the column number from the name
+
+# match(f2_better$Item, names(ques43))  # get the column number from the name
+
+model <- mirt.model('F1 = 1, 2,  4,  5,  9, 10, 11, 13, 15, 17, 21, 26, 28, 30, 32, 33, 34, 41, 42, 43
+ F2 = 3,  6,  7,  8, 12, 14, 16, 18, 19, 20, 22, 23, 24, 25, 27, 29, 31, 35, 36, 37, 38, 39, 40
+                    COV = F1*F2')
+
+cmod <- mirt(ques43, model, SE=T)   # phil in his example didn't use MHRM, however, the book modern psychometric has used them.  
+coef(cmod)
+summary(cmod)
+
+asticmod <- summary(cmod, verbose = FALSE)
+round(asticmod$fcor, 3)
+
+M2(cmod)
+
+# results are good 
+
+for(i in 1:ncol(ques43)){
+  print(itemplot(cmod, i, drop.zeros = TRUE)) #drop zeros from plot, lowers dimensions
+}
+
+csummary <- summary(cmod, rotate = "oblimin", verbose = F)
+
+cload <- data.frame(csummary$rotF)
+# max(cload)
+# sort(cload$F1)
+# sort(cload$F2)
+
+
+```
+
+```{r}
+person_par <- data.frame(fscores(mod_43_graded2, method = 'EAPsum'))
+
+# Local independence means that given a person parameter, item responses become
+# independent. This assumption is difficult to check and often omitted in practice.
+
+# (ii <- itemfit(mod_43_graded2))
+# p.adjust(ii$p.S_X2, 'fdr')
+
+#without adjustment, nothing is significant. I won't apply adjustment. 
+
+# SX2_tabs <- itemfit(mod_43_graded2, S_X2.tables = TRUE)
+# SX2_tabs$O.org[[1]]
+# SX2_tabs$O[[1]]
+# SX2_tabs$E[[1]]
+
+## these 4 lines above are in example 2. I don't understand how to use them  
+
+
+#item residual covaration
+# help('residuals-method')
+# residuals(mod_43_graded2)
+# residuals(mod_43_graded2, tables=TRUE)
+
+# still I can't understand
+
+# I think LR test takes into consideration the residuals automatically. Thus, I won't report them here. 
+
+
+```
+
+
+
+# comparing means for person parameter
+
+```{r}
+
+summary(aov(person_par$Theta.1 ~ SurveyData$income_category_comb, data = SurveyData))
+
+summary(aov(person_par$Theta.1 ~ SurveyData$Number_of_family_members, data = SurveyData))
+
+summary(aov(person_par$Theta.1 ~ SurveyData$parent_education
+, data = SurveyData))
+
+summary(aov(person_par$Theta.1 ~ SurveyData$sex, data = SurveyData))
+
+
+summary(aov(person_par$Theta.2 ~ SurveyData$income_category_comb, data = SurveyData))
+
+summary(aov(person_par$Theta.2 ~ SurveyData$Number_of_family_members, data = SurveyData))
+
+summary(aov(person_par$Theta.2 ~ SurveyData$parent_education
+, data = SurveyData))
+
+summary(aov(person_par$Theta.2 ~ SurveyData$sex, data = SurveyData))
+
+```
+
+# MANOVA
+
+```{r}
+
+
+mnv_tbl <- function(col){
+  
+  fit_sex <- tidy(manova(as.matrix(person_par) ~ col ), test = "Hotelling-Lawley")
+
+fit_sex <- fit_sex[1, c(1,2,3,4,7)]
+
+colnames(fit_sex) <- c("Factor", "df", "Hotelling-Lawley trace", "F", "p.value")
+
+return(fit_sex)  
+}
+
+mnv_tbl(SurveyData$income_category_comb)
+
+mnv_tbl(SurveyData$sex)
+
+mnv_tbl(SurveyData$parent_education)
+
+```
+
+
 ### Reliability 
 
 ```{r}
@@ -1048,11 +1289,33 @@ Mod43.REL <- bind_rows(fscores(mod_43_graded2, method= "EAP", returnER = T))
 
 rel_compare <- bind_rows(Mod44.REL, Mod43.REL)
 
-rmdtbl(Mod43.REL)
-
 ```
 
 
+The ~~first~~ subscale has a reliability of `r round(Mod43.REL$F1, 3)`, and the ~~second~~ subscale had a reliability of `r round(Mod43.REL$F1, 3)`.
+
+
+# Parameter estimates
+
+https://groups.google.com/forum/#!searchin/mirt-package/intercept$20and$20difficulty|sort:date/mirt-package/AWf_JdTfCmo/09Qm9892BQAJ  
+
+according to this link, I will not use difficulty parameter. Since Phil(MIRT developer) said "How is) multidimensional difficulty more interpretable than an intercept? Difficulty generally reflects the location where the response function inflects. In multidimensional models, this occur as vector or hyper-vector locations, so as humans we really can't think in those terms too well."
+
+```{r}
+
+f1_better
+f2_better
+
+model<-mirt.model("
+                  F1=1-9
+                  F2 =10-61
+                  INT=17-25
+                  ATH=26-30
+                  COV=INFO*PRESS*INT*ATH")
+
+par_est <- coef(mod_43_graded2, printSE=T, as.data.frame = F, rotate = 'oblimin') 
+
+```
 
 ```{r}
 # remove 15 ( wan't beneficial)
@@ -1217,8 +1480,6 @@ trial_all_v <- data.frame(foo_v$rotF) %>%
   filter_if(is.numeric, all_vars(abs(.) < 0.3)) %>%
   column_to_rownames('gene')   # get only questions that have correlation less than 0.3 with all other variables. 
 
-
-
 ```
 
 
@@ -1296,157 +1557,777 @@ On chaning the rotation to varimax, three questions are consistent (25,27,40)
 
 I will remove 25 and 40, since there phrasing is strange and I will recheck.
 
+# information plot
 
 ```{R}
-itemplot(mod_51_graded3, 3, main = "ICS addit3",
-rot = list(xaxis = -70, yaxis = 50, zaxis = 10))
+itemplot(mod_51_graded3, 3, rot = list(xaxis = -70, yaxis = 50, zaxis = 10, shiny = T))
 
-```
+itemplot(mod_43_graded2, 1, shiny = T )
 
-```{r}
-coef(mod_51_graded3)
-
-```
-### multidimentional item location 
-
-```{r}
-head(MDIFF(mod_51_graded3))
-
-```
-
-### person paramegters 
-
-```{r}
-
-head(fscores(mod_51_graded3))
-rel_49 <- head(fscores(mod_49_graded3, method = "EAP", returnER = T))
-rel_51 <- head(fscores(mod_51_graded3, method = "EAP", returnER = T))  # emperical reliability
-
-
-
-
-rel.mirt <- function(x){
-  eap <- mirt::fscores(x, full.scores = T, scores.only = T, full.scores.SE = T)
-  e <- mean(eap[, 2]^2)
-  s <- var(eap[, 1])
-  1-(e/(s+e))
+# information plots to see where each item is highly informative across the latent trait
+for(i in 1:ncol(ques43)){
+  print(itemplot(cmod, i, drop.zeros = TRUE, type = "info")) #drop zeros from plot, lowers dimensions
 }
 
-rel.mirt(mod_49_graded3)
+#names(ques43)[24]
+
+# question 35 is a highly informative question at a latent trait of 1.2 
+
+names(ques43)[27]
+
+# question 39 is a highly informative question at a latent trait of 1.2 
+
+
+names(ques43)[20]
+
+# question 31 is a highly informative question at a latent trait of 1.2 
+
+
+names(ques43)[19]
+
+# question 29 is a highly informative question at a latent trait of 1.2 
+
 
 ```
 
-### residuals
+# category response plots with contours for the exploratory model
 
 ```{r}
 
-res <- residuals(mod_51_graded3, type = "LDG2", digits = 4, df.p = T)
+
+# category response plots with contours to see the probability of responding in a certain way
+# for(i in 1:ncol(ques43)){
+#   print(itemplot(mod_43_graded2, i,  type = "tracecontour")) 
+# }
+
+
+#Figure 4.1 - MGRM category response surfaces
+
+p0.grm <- function(a1,a2,b11,b12, no) {
+  prob <- matrix(0,length(theta1),length(theta2))
+  for (i in 1:length(theta1)) {
+    for (j in 1:length(theta2)) {
+      z <- a1*(theta1[i]-b11)+a2*(theta2[j]-b12)
+      p0star <- rep(1, ncol(ques43))
+      p1star <- exp(z)/(1+exp(z))
+      
+      prob[i,j] <- p0star[no]-p1star[no]
+    }
+  }
+  prob
+}
+
+
+p1.grm <- function(a1,a2,b11,b12,b21,b22, no) {
+  prob <- matrix(0,length(theta1),length(theta2))
+  for (i in 1:length(theta1)) {
+    for (j in 1:length(theta2)) {
+      z0 <- a1*(theta1[i]-b11)+a2*(theta2[j]-b12)
+      z1 <- a1*(theta1[i]-b21)+a2*(theta2[j]-b22)
+      p0star <- exp(z0)/(1+exp(z0))
+      p1star <- exp(z1)/(1+exp(z1))
+      prob[i,j] <- p0star[no]-p1star[no]
+    }
+  }
+  prob
+}
+
+p2.grm <- function(a1,a2,b21,b22, no) {
+  prob <- matrix(0,length(theta1),length(theta2))
+  for (i in 1:length(theta1)) {
+    for (j in 1:length(theta2)) {
+      z1 <- a1*(theta1[i]-b21)+a2*(theta2[j]-b22)
+      p1star <- exp(z1)/(1+exp(z1))
+      p2star <- rep(0, ncol(ques43))
+      prob[i,j] <- p1star[no]-p2star[no]
+    }
+  }
+  prob
+}
+
+kgl <- coef(mod_43_graded2, simplify = T)
+kgl <- data.frame(kgl$items)
+
+
+#arbitrary parameters
+theta1 <- seq(-4,4,.25)
+theta2 <- seq(-4,4,.25)
+
+kgl$a2[kgl$a2 == 0] <- 0.01
+
+a1 <- kgl$a1
+a2 <- kgl$a2
+b11 <- -kgl$d1/kgl$a1
+b12 <- -kgl$d1/kgl$a2
+b21 <- -kgl$d2/kgl$a1
+b22 <- -kgl$d2/kgl$a2
+
+
+x <- theta1
+y <- theta2
+
+
+for (i in 1:ncol(ques43)){
+  contour(x,y,p0.grm(a1,a2,b11,b12,i),las=1,labcex=1,xlab=expression(theta[1]),cex.lab=1.5,ylab=expression(theta[2]))
+}
+
+for (i in 1:ncol(ques43)){
+  contour(x,y, p1.grm(a1,a2,b11,b12,b21,b22,i),las=1,labcex=1,xlab=expression(theta[1]),cex.lab=1.5,ylab=expression(theta[2]))
+}
+
+for (i in 1:ncol(ques43)){
+  contour(x,y,p2.grm(a1,a2,b21,b22,i),las=1,labcex=1,xlab=expression(theta[1]),cex.lab=1.5,ylab=expression(theta[2]))
+}
+
 
 ```
 
+# compensatory plots
+
+```{r}
+for (i in 1:ncol(ques43)){ 
+slice <- -2
+yslice <- which(y==slice)
+#windows(4,4)
+plot(x,p0.grm(a1,a2,b11,b12, i)[,yslice],type='l',ylim=c(0,1.1),las=1,xlim=c(-4,4),ylab='P(x = k)',xlab=expression(theta[1]),lwd=2)
+lines(x,p1.grm(a1,a2,b11,b12,b21,b22, i)[,yslice],lwd=2,lty=2)
+lines(x,p2.grm(a1,a2,b21,b22, i)[,yslice],lwd=2,lty=3)
+key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(slice)))
+legend("top",legend=key,cex=1.5,bty='n')
+
+}
+```
+
+Examining these slices will help us make sense of the unintuitive surface plot. For instance, the top panel shows that when θ2 is high, response category k = 1 (the solid line) is only the most likely choice when the respondent is low (<–1.5) on the θ1 scale. Similarly, the bottom panel shows that when examinees are low on θ2, then response category 3 is only likely when θ1 is very high (>3.0). In terms of the example social situation enjoyment item from Chapter 4, these conditional cross-sections tell us that regardless of anxiety (θ1) level, an examinee is unlikely to select “Always” (i.e., k = 0) if she is highly introverted (e.g., θ2 = 2) or “Never” (i.e., k = 2) if she is highly extroverted (e.g., θ2 = –2). 
 
 
-# exploratory multigroup MIRT
+```{r}
+for (i in 1:ncol(ques43)){ 
+slice <- 0
+yslice <- which(y==slice)
+#windows(4,4)
+plot(x,p0.grm(a1,a2,b11,b12, i)[,yslice],type='l',ylim=c(0,1.1),las=1,xlim=c(-4,4),ylab='P(x = k)',xlab=expression(theta[1]),lwd=2)
+lines(x,p1.grm(a1,a2,b11,b12,b21,b22, i)[,yslice],lwd=2,lty=2)
+lines(x,p2.grm(a1,a2,b21,b22, i)[,yslice],lwd=2,lty=3)
+key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(slice)))
+legend("top",legend=key,cex=1.5,bty='n')
 
-### for parent 
+}
+```
 
 ```{r}
 
-class2 <- SurveyData$parent
-levels(class2)
-modMG <- multipleGroup(ques53, model = 2, group = class2,
-SE = TRUE, itemtype = "graded", TOL = 0.01)  # model =2 means two dimentional model
-# https://groups.google.com/forum/#!searchin/mirt-package/multiplegroup$20exploratory|sort:date/mirt-package/j-ZyjuXPNcY/zoSTk-BEBgAJ 
+for (i in 1:ncol(ques43)){ 
+slice <- 2
+yslice <- which(y==slice)
+#windows(4,4)
+plot(x,p0.grm(a1,a2,b11,b12, i)[,yslice],type='l',ylim=c(0,1.1),las=1,xlim=c(-4,4),ylab='P(x = k)',xlab=expression(theta[1]),lwd=2)
+lines(x,p1.grm(a1,a2,b11,b12,b21,b22, i)[,yslice],lwd=2,lty=2)
+lines(x,p2.grm(a1,a2,b21,b22, i)[,yslice],lwd=2,lty=3)
+key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(slice)))
+legend("top",legend=key,cex=1.5,bty='n')
 
-# which p-value to use ?  Ans: 0.05, but u can use 0.01 
-# https://groups.google.com/forum/#!searchin/mirt-package/multiplegroup$20exploratory|sort:date/mirt-package/CXWkXsKCBvo/WAivQ5ABBQAJ
+}
 
-astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
-p.adjust = 'fdr')
-round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
 ```
 
-no DIF items 
-
-### parent education 
+# modify theta 1 
 
 ```{r}
 
-class3 <- SurveyData$parent_education
-levels(class3) <- c("ILL", "rwp", "psec", "uni")
+for (i in 1:ncol(ques43)){ 
+slice <- -2
+xslice <- which(x==slice)
+#windows(4,4)
+plot(x,p0.grm(a1,a2,b11,b12, i)[xslice,],type='l',ylim=c(0,1.1),las=1,xlim=c(-4,4),ylab='P(x = k)',xlab=expression(theta[2]),lwd=2)
+lines(x,p1.grm(a1,a2,b11,b12,b21,b22, i)[xslice,],lwd=2,lty=2)
+lines(x,p2.grm(a1,a2,b21,b22, i)[xslice,],lwd=2,lty=3)
+key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(slice)))
+legend("top",legend=key,cex=1.5,bty='n')
 
-modMG_edu <- multipleGroup(ques53, model = 2, group = class3, itemtype = "graded", TOL = 0.01, SE = T)  
-
-DIF_edu <- DIF(modMG_edu, c('a1', 'd'), Wald = T,
-p.adjust = 'fdr', simplify = T, verbose = T)
-round(DIF_edu$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
-
-
-
+}
 ```
 
-### income category 
+```{r}
+for (i in 1:ncol(ques43)){ 
+slice <- 0
+xslice <- which(x==slice)
+#windows(4,4)
+plot(x,p0.grm(a1,a2,b11,b12, i)[xslice,],type='l',ylim=c(0,1.1),las=1,xlim=c(-4,4),ylab='P(x = k)',xlab=expression(theta[2]),lwd=2)
+lines(x,p1.grm(a1,a2,b11,b12,b21,b22, i)[xslice,],lwd=2,lty=2)
+lines(x,p2.grm(a1,a2,b21,b22, i)[xslice,],lwd=2,lty=3)
+key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(slice)))
+legend("top",legend=key,cex=1.5,bty='n')
+
+}
+```
 
 ```{r}
 
-class4 <- factor(SurveyData$income_category)
-modMG_inc <- multipleGroup(ques53,  model = 2, group = class4, itemtype = "graded", TOL = 0.01, SE= T)
+for (i in 1:ncol(ques43)){ 
+slice <- 2
+xslice <- which(x==slice)
+#windows(4,4)
+plot(x,p0.grm(a1,a2,b11,b12, i)[xslice,],type='l',ylim=c(0,1.1),las=1,xlim=c(-4,4),ylab='P(x = k)',xlab=expression(theta[2]),lwd=2)
+lines(x,p1.grm(a1,a2,b11,b12,b21,b22, i)[xslice,],lwd=2,lty=2)
+lines(x,p2.grm(a1,a2,b21,b22, i)[xslice,],lwd=2,lty=3)
+key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(slice)))
+legend("top",legend=key,cex=1.5,bty='n')
 
-DIF_inc <- DIF(modMG_inc, c('a1', 'd'), Wald = TRUE,
-p.adjust = 'fdr')
-round(DIF_inc$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
-
+}
 
 ```
 
 
-### Number of children 
+# expected score surface
 
 ```{r}
 
-class5 <- factor(SurveyData$Number_of_family_members)
-modMG_mem <- multipleGroup(ques53,  model = 2, group = class5, itemtype = "graded", TOL = 0.01, SE= T)
+for (i in 1:ncol(ques43)){ 
 
-DIF_mem <- DIF(modMG_mem, c('a1', 'd'), Wald = TRUE,
-p.adjust = 'fdr')
-round(DIF_mem$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+score <- p0.grm(a1,a2,b11,b12, i)*0+p1.grm(a1,a2,b11,b12,b21,b22, i)*1+p2.grm(a1,a2,b21,b22, i)*2
+# persp(x,y,score,phi=18,theta=20,d=2,zlim=c(0,2),xlab="\ntheta1",ylab="\ntheta2",zlab="\nExpected Score",ticktype='detailed',cex.lab=1.3)
+contour(x,y,score,levels=c(0,.5,1,1.5),las=1,labcex=1,xlab=expression(theta[1]),cex.lab=1.5,ylab=expression(theta[2]),lwd=seq(0,5,length=4))
+}
+
+```
+
+One descriptive tool that is unique to polytomous models is the expected item response score, meaning the observed response that we would expect to see given the respondent’s location in the θ-space. In dichotomous models, of course, there are only two scores, so the idea of an expected score is redundant. But when there are multiple scores (i.e., k = 0, 1, or 2), then it may be useful to examine the expected score in addition to the probability of selecting a certain response. 
+
+Notice that the z-axis in the panel on the left now represents the expected score (which ranges from 0 to 2) for our three category items, rather than the response probability (which ranges from 0 to 1). In terms of the social situations example, where θ1 is anxiety and θ2 is introversion, these plots reveal that individuals who are high in anxiety (θ1 = 2) but low in introversion (θ2 = –2), for example, are expected to select response category 1 (Sometimes; i.e., provide a score of 1), while those who have average levels of anxiety (θ1 = 0) but are highly extroverted (θ2 = 3) are expected to select category 2 (Never). The compensatory nature of the MGRM is also shown in Figure 5.12: When individuals possess high levels of both θanx and θint, it is highly probable that they will select category 2 (Never).
+
+# polytomous information
+
+```{r}
+for (i in 1:ncol(ques43)){ 
+
+Ai <- sqrt(a1[i]^2+a2[i]^2)
+info <- (Ai^2)*((z1*(1-z1))+(z2*(1-z2))+((z3*(1-z3))))
+contour(x,y,info,levels=seq(0,max(info),.1),las=1,labcex=1,xlab=expression(theta[1]),cex.lab=1.5,ylab=expression(theta[2]),lwd=seq(0,5,.3))
+}
+
+```
+
+Note that the z-axis is information I(θ) rather than probability. The wide white swath in the middle of the contour plot represents the plateau associated with θ values. Overall, then, this item provides accurate measurement of the person parameters across a considerable region of the θ-space. 
+
+
+
+
+The Direction of Measurement
+For the compensatory M2PL model, imagine that an item’s response surface is a piece of paper that has been bent into an S-shape (also known as an ogive). One latent trait may have a greater impact on the probability of a correct response to this particular item, so this S-shaped paper needs to be rotated accordingly. For instance, if θ1 plays a larger role than θ2 in the probability of correct response, then the paper should be rotated toward θ1. Consider the four contour plots shown in Figure 5.5. As discussed in the previous chapter, you can think of these contour plots as the view you would have when looking down through the surface onto the θ-plane. Here, we add three graphical elements that will assist us in comprehending the shape and orientation of the response surface. The first is a bolded contour line, which represents the combinations of θ1 and θ2 that are associated with a P = 0.5 probability of correct response (i.e., the same threshold used in defining the difficulty parameter in the unidimensional 2PL model presented in Chapter 2). The second is a dotted line indicating the axis along which the surface is oriented, which Muraki and Carlson (1995) termed the direction of measurement. The third is an arrow, pointing in the direction of measurement, whose length reflects the steepness of the surface such that longer arrows are indicative of steeper surfaces. We will return to slope steepness later.
+
+The four contours in Figure 5.5 reflect items with equal difficulty. In each plot, the first discrimination parameter a1 is fixed at 1.0, but a2 varies. Plot (i) presents the contours when a2 = 0.1. Here, the second dimension hardly discriminates at all and thus barely plays a role in the probability of 
+
+page 59 in book. use this to interpret. 
+
+
+
+```{r}
+MDisc <- data.frame(MDISC(mod_43_graded2))
+# simply this is squaring each discrimination parameter and summing them up 
+
+MDisc <- rownames_to_column(MDisc)
+
+Mdiff <- data.frame(MDIFF(mod_43_graded2))
+
+# here we divide each intercept by the MDISC 
+
+Mdiff <- rownames_to_column(Mdiff)
+
+
+```
+
+Conceptually, the multidimensional Ai parameter is analogous to the unidimensional a parameter and can be interpreted similarly: Higher Ai values indicate an item response surface that discriminates well between low and high levels of the latent traits.
+
+We can also compute a multidimensional difficulty index (sometimes referred to as MDIFF). In the 2-dimensional example, the origin of the θ-space represents average difficulty/ability with regard to both latent traits. 
+
+The multidimensional Bi parameter is interpreted just as the unidimensional bi parameter: Items with high values of Bi require high levels of θ in order to have a high likelihood of correct response. Again, however, this interpretation is only accurate in a specific direction.
+
+for the difficulty, I can sort them 
+
+
+```{r}
+Mdiff %>% 
+  arrange(desc(MDIFF_2)) %>% 
+  head
+```
+
+These are the most difficult questions that require a higher latent trait to select the choice "very common"
+
+
+# conditional response functions
+
+
+Finally, the bottom panel shows the θ1 response curve when the respondent’s ability with regard to θ2 is –2. We see that when θ2 is low, θ1 must be fairly high in order for the respondent to have a high correct response probability. Overall, we can think of the three conditional item response functions in terms of difficulty: As θ2 increases from –2 to 0 to 2, it becomes “easier” (in terms of θ1) for an examinee to provide a correct response. We could also slice the surface in the other direction so that the response probability is represented as a function of θ2 conditional on θ1. Doing so would reveal that a correct response is more likely when the respondent possesses strong abilities on either θ1 or θ2. (This relationship between dimensions demonstrates the compensatory nature of the M2PL: Low levels of θ2 can be compensated with high levels of θ1 and vice versa.)
+
+```{r}
+
+
+
+# z2 <- p1.grm(a1,a2,b11,b12,b21,b22)
+# z3 <- p2.grm(a1,a2,b21,b22)
+
+
+# p0.grm <- function(a1,a2,b11,b12) {
+#   prob <- matrix(0,length(theta1),ncol(ques43))
+#   for (i in 1:ncol(ques43)) {
+#       z <- a1[i]*(theta1-b11[i])+a2[i]*(theta2_slice-b12[i])
+#       p0star <- rep(1, length(theta1))
+#       p1star <- exp(z)/(1+exp(z))
+#       prob[,i] <- p0star-p1star
+#   }
+#   prob
+# }
+# 
+# prob1 <- p0.grm(a1,a2,b11,b12)
+# 
+# # theta = 2 
+# 
+# theta2_slice <- 2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob1[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# # theta = 0
+# theta2_slice <- 0 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob1[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# # theta = -2 
+# theta2_slice <- -2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob1[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# ```
+# 
+# # constraining theta 1 
+# 
+# 
+# ```{r}
+# 
+# # theta 1 = 2
+# 
+# theta1_slice <- 2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta1,prob1[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[2]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(theta1_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# 
+# # theta 1 = 0
+# 
+# theta1_slice <- 0 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta1,prob1[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[2]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(theta1_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# # theta 1 = -2
+# 
+# theta1_slice <- -2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta1,prob1[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[2]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(theta1_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# ```
+# 
+# 
+# # for the second option 
+# 
+# ```{r}
+# 
+# p1.grm <- function(a1,a2,b11,b12,b21,b22) {
+#   prob <- matrix(0,length(theta1),ncol(ques43))
+#   for (i in 1:ncol(ques43)) {
+#       z0 <- a1[i]*(theta1-b11[i])+a2[i]*(theta2_slice-b12[i])
+#       z1 <- a1[i]*(theta1-b21[i])+a2[i]*(theta2_slice-b22[i])
+#       p0star <- exp(z0)/(1+exp(z0))
+#       p1star <- exp(z1)/(1+exp(z1))
+#       prob[,i] <- p0star-p1star
+#   }
+#   prob
+# }
+# 
+# prob2 <- p1.grm(a1,a2,b11,b12,b21,b22)
+# 
+# # theta = 2 
+# 
+# theta2_slice <- 2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob2[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# # theta = 0
+# theta2_slice <- 0 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob2[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# # theta = -2 
+# theta2_slice <- -2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob2[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# ```
+# 
+# # constraining theta 1 
+# 
+# ```{r}
+# 
+# # theta 1 = 2
+# 
+# theta1_slice <- 2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta1,prob2[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[2]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(theta1_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# 
+# # theta 1 = 0
+# 
+# theta1_slice <- 0 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta1,prob2[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[2]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(theta1_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# # theta 1 = -2
+# 
+# theta1_slice <- -2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta1,prob2[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[2]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(theta1_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# ```
+# 
+# 
+# # for the third option 
+# 
+# ```{r}
+# 
+# # p2.grm <- function(a1,a2,b21,b22, no) {
+# #   prob <- matrix(0,length(theta1),length(theta2))
+# #   for (i in 1:length(theta1)) {
+# #     for (j in 1:length(theta2)) {
+# #       z1 <- a1*(theta1[i]-b21)+a2*(theta2[j]-b22)
+# #       p1star <- exp(z1)/(1+exp(z1))
+# #       p2star <- rep(0, ncol(ques43))
+# #       prob[i,j] <- p1star[no]-p2star[no]
+# #     }
+# #   }
+# #   prob
+# # }
+# 
+# p2.grm <- function(a1,a2,b21,b22) {
+#   prob <- matrix(0,length(theta1),ncol(ques43))
+#   for (i in 1:ncol(ques43)) {
+#       z1 <- a1[i]*(theta1-b21[i])+a2[i]*(theta2-b22[i])
+#       p1star <- exp(z1)/(1+exp(z1))
+#       p2star <- rep(0, ncol(ques43))
+#       # p0star <- rep(1, length(theta1))
+#       # p1star <- exp(z)/(1+exp(z))
+#       prob[,i] <- p0star-p1star
+#   }
+#   prob
+# }
+# 
+# prob3 <- p2.grm(a1,a2,b21,b22)
+# 
+# # theta = 2 
+# 
+# theta2_slice <- 2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob3[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# # theta = 0
+# theta2_slice <- 0 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob3[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# # theta = -2 
+# theta2_slice <- -2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob3[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# ```
+# 
+# # contraining theta 1 
+# 
+# ```{r}
+# 
+# # theta 1 = 2
+# 
+# theta1_slice <- 2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta1,prob3[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[2]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(theta1_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# 
+# # theta 1 = 0
+# 
+# theta1_slice <- 0 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta1,prob3[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[2]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(theta1_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# # theta 1 = -2
+# 
+# theta1_slice <- -2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta1,prob3[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[2]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[2],' | ',theta[1])==.(theta1_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# ```
+# 
+# 
+# ```{r}
+# 
+# 
+# p0.grm <- function(a1,a2,b11,b12) {
+#   prob <- matrix(0,length(theta1),ncol(ques43))
+#   for (i in 1:ncol(ques43)) {
+#       z <- a1[i]*(theta1-b11[i])+a2[i]*(theta2_slice-b12[i])
+#       p0star <- rep(1, length(theta1))
+#       p1star <- exp(z)/(1+exp(z))
+#       prob[,i] <- p0star-p1star
+#   }
+#   prob
+# }
+# 
+# prob1 <- p0.grm(a1,a2,b11,b12)
+# 
+# theta2_slice <- 2 #modify value of 2nd dimension
+# for (i in 1: ncol(ques43)){
+#   plot(theta2,prob1[,i],type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x = 1)',xlab=expression(theta[1]),lwd=3)
+#   key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+#   legend("bottomright",legend=key,cex=1.5,bty='n')
+# }
+# 
+# ```
+# theta2_slice <- 2 #modify value of 2nd dimension
+# for (i in 1:ncol(ques43)){
+#   plot(theta2, p0.grm(a1,a2,b11,b12,i),type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x =1)',xlab=expression(theta[1]),lwd=3)
+# }
+# key <- as.expression(bquote(paste(theta[1],' | ',theta[2])==.(theta2_slice)))
+# legend("bottomright",legend=key,cex=1.5,bty='n')
+# 
+# c <- p0.grm(a1,a2,b11,b12, 1)
+# 
+# for (i in 1:ncol(ques43)){
+#   plot(theta2, p0.grm(a1,a2,b11,b12,i),type='l',ylim=c(0,1),las=1,xlim=c(-4,4),ylab='P(x =1)',xlab=expression(theta[1]),lwd=3)
+# }
+# 
+# 
+# ```
+# 
+# 
+# 
+# 
+# 
+# for (i in 1:ncol(ques43)){
+#   contour(x,y, p1.grm(a1,a2,b11,b12,b21,b22,i),las=1,labcex=1,xlab=expression(theta[1]),cex.lab=1.5,ylab=expression(theta[2]))
+# }
+# 
+# for (i in 1:ncol(ques43)){
+#   contour(x,y,p2.grm(a1,a2,b21,b22,i),las=1,labcex=1,xlab=expression(theta[1]),cex.lab=1.5,ylab=expression(theta[2]))
+# }
+# 
+# 
+# ```
 
 ```
 
 
-
-# TRY after removal 2 questions
-
-```{R}
-ques43_irt <- ques53 %>% 
-  dplyr::select(- c(40,44))
-
-mod_51_graded3_43 <- mirt(ques43_irt, 2, itemtype = "graded")
-
-stat_graded_43 <- M2(mod_51_graded3_43) # didn't use type C2 since I have too many dfs 
-
+# ```{r}
+# coef(mod_51_graded3)
+# 
+# ```
+# 
+# ### multidimentional item location 
+# 
+# ```{r}
+# head(MDIFF(mod_51_graded3))
+# 
+# ```
+# 
+# ### person parameters 
+# 
+# ```{r}
+# 
+# head(fscores(mod_51_graded3))
+# rel_49 <- head(fscores(mod_49_graded3, method = "EAP", returnER = T))
+# rel_51 <- head(fscores(mod_51_graded3, method = "EAP", returnER = T))  # emperical reliability
+# 
+# 
+# 
+# 
+# rel.mirt <- function(x){
+#   eap <- mirt::fscores(x, full.scores = T, scores.only = T, full.scores.SE = T)
+#   e <- mean(eap[, 2]^2)
+#   s <- var(eap[, 1])
+#   1-(e/(s+e))
+# }
+# 
+# rel.mirt(mod_49_graded3)
+# 
+# ```
+# 
+# ### residuals
+# 
+# ```{r}
+# 
+# res <- residuals(mod_51_graded3, type = "LDG2", digits = 4, df.p = T)
+# 
+# ```
+# 
+# # exploratory multigroup MIRT
+# 
+# ### for parent 
+# 
+# ```{r}
+# 
+# class2 <- SurveyData$parent
+# levels(class2)
+# modMG <- multipleGroup(ques53, model = 2, group = class2,
+# SE = TRUE, itemtype = "graded", TOL = 0.01)  # model =2 means two dimentional model
+# # https://groups.google.com/forum/#!searchin/mirt-package/multiplegroup$20exploratory|sort:date/mirt-package/j-ZyjuXPNcY/zoSTk-BEBgAJ 
+# 
+# # which p-value to use ?  Ans: 0.05, but u can use 0.01 
+# # https://groups.google.com/forum/#!searchin/mirt-package/multiplegroup$20exploratory|sort:date/mirt-package/CXWkXsKCBvo/WAivQ5ABBQAJ
+# 
+# astiDIF <- DIF(modMG, c('a1', 'd'), Wald = TRUE,
+# p.adjust = 'fdr')
+# round(astiDIF$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+# ```
+# # try with the 43 questions
+# 
+# ```{r}
+# modMG_43 <- multipleGroup(ques43, model = 2, group = class2,
+# SE = TRUE, itemtype = "graded", TOL = 0.01)  # model =2 means two dimentional model
+# 
+# astiDIF_43 <- DIF(modMG_43, c('a1', 'd'), Wald = TRUE,
+# p.adjust = 'fdr')
+# round(astiDIF_43$adj_pvals[astiDIF_43$adj_pvals < 0.05], 4)
+# 
+# ```
+# 
+# no DIF items 
+# 
+# ### parent education 
+# 
+# ```{r}
+# 
+# class3 <- SurveyData$parent_education
+# levels(class3) <- c("ILL", "rwp", "psec", "uni")
+# 
+# modMG_edu <- multipleGroup(ques53, model = 2, group = class3, itemtype = "graded", TOL = 0.01, SE = T)  
+# 
+# DIF_edu <- DIF(modMG_edu, c('a1', 'd'), Wald = T,
+# p.adjust = 'fdr', simplify = T, verbose = T)
+# round(DIF_edu$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+# 
+# 
+# 
+# ```
+# 
+# ### income category 
+# 
+# ```{r}
+# 
+# class4 <- factor(SurveyData$income_category)
+# modMG_inc <- multipleGroup(ques53,  model = 2, group = class4, itemtype = "graded", TOL = 0.01, SE= T)
+# 
+# DIF_inc <- DIF(modMG_inc, c('a1', 'd'), Wald = TRUE,
+# p.adjust = 'fdr')
+# round(DIF_inc$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+# 
+# 
+# ```
+# 
+# 
+# ### Number of children 
+# 
+# ```{r}
+# 
+# class5 <- factor(SurveyData$Number_of_family_members)
+# modMG_mem <- multipleGroup(ques53,  model = 2, group = class5, itemtype = "graded", TOL = 0.01, SE= T)
+# 
+# DIF_mem <- DIF(modMG_mem, c('a1', 'd'), Wald = TRUE,
+# p.adjust = 'fdr')
+# round(DIF_mem$adj_pvals[astiDIF$adj_pvals < 0.05], 4)
+# 
+# ```
+# 
+# 
+# 
+# # TRY after removal 2 questions
+# 
+# ```{r}
+# ques43_irt <- ques53 %>% 
+#   dplyr::select(- c(40,44))
+# 
+# mod_51_graded3_43 <- mirt(ques43_irt, 2, itemtype = "graded")
+# 
+# stat_graded_43 <- M2(mod_51_graded3_43) # didn't use type C2 since I have too many dfs 
+# 
 ```
-
+ 
 # Try after removal 20 questions 
 
 ```{r}
-ques19_irt <- ques53 %>% 
-  dplyr::select(- c(20:61))
-
-mod_51_graded3_19 <- mirt(ques19_irt, 1, itemtype = "graded")
-
-stat_graded_19 <- M2(mod_51_graded3_19) # didn't use type C2 since I have too many dfs 
+# ques19_irt <- ques53 %>%
+#   dplyr::select(- c(20:61))
+# 
+# mod_51_graded3_19 <- mirt(ques19_irt, 1, itemtype = "graded")
+# 
+# stat_graded_19 <- M2(mod_51_graded3_19) # didn't use type C2 since I have too many dfs
 
 ```
 
-
 ```{r}
-
-plot(mod_graded3, type = "info", main = "Item Information")
-
-# This plot (not shown here) tells us in which trait area our entire scale is
-# informative and thus able to assess a person’s location on the conservatism trait
-# with good precision
+# 
+# plot(mod_graded3, type = "info", main = "Item Information")
+# 
+# # This plot (not shown here) tells us in which trait area our entire scale is
+# # informative and thus able to assess a person’s location on the conservatism trait
+# # with good precision
 
 ```
 
@@ -1920,6 +2801,9 @@ edu_post_h
 Splitting university from all other educational levels yielded significant results. 
 
 
+# Detailed statistical results
+
+
 
 ```{r}
 
@@ -2052,6 +2936,9 @@ a[a ==950] <- 0
 sort(a, decreasing = T)
 
 #polychoric correlation produces more conservative results (produces lower absolute values).
+
+itemfit(mod_43_graded2)
+
 
 ```
 
