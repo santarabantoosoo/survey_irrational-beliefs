@@ -9,11 +9,8 @@ bibliography: library.bib
 remove libraries not needed
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = NA,
-                      fig.height = 15, fig.width = 15)
-#this chunk is used to silence code, warnings, comments and hash from appearing in output.
-
-
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = NA)
+#this chunk is used to silence code, warnings, comments and hashes. 
 ```
 
 Division of the paper 
@@ -30,9 +27,7 @@ response model [@samejima1997; @samejima1969]
 
 R Foundation for Statistical Computing, Vienna, Austria version 3.6.0 was used for the statistical analysis. Multidimensional item response theory package version 1.31 [@chalmersMirtMultidimensionalItem2012] using Unconditional maximum likelihood estimator with expectation–maximization (EM) algorithm was used for the analysis. An exploratory multidimensional extension of the graded response model [@samejima1997; @samejima1969] was used to model the data. Exclusions of questions from the tool was based both on principal investigator opinion, factor loading as well as item fit tests. M2 fit statsitics were used to assess model fit and ANOva was used to compare different models' performance. Other R packages used were HH version 3.1-35 for plotting likert data and 
 
-
 # Results
-
 
 The irrational beliefs tool contains three response options per question and would
 therefore have two thresholds (difficulty parameters) estimated for each item. The difficulty
@@ -45,6 +40,7 @@ Online appendix include two Rmarkdown files. The first one is a step by step exc
 options(scipen = 999)
 options("mc.cores"=2) # choosing the number of cores that optimizes performance. 
 
+library(finalfit)# for the descriptive table
 library(packrat) # for detecting unused packages. But I failed
 library(data.table)
 library(lavaan)
@@ -77,43 +73,28 @@ library(ICSNP)   # for hotelling test
 library(readxl) # for importing data
 library(mirt) # for fitting multidimentional IRT 
 
-#unused_packages(project = d)
-
+names(SurveyData)
 #### functions ###
 
 rmdtbl <- function(df){
-  
   # using flextable package to produce customized elegant tables directly into microsoft word
-  
-tbl_alpha <- autofit(theme_vanilla(flextable(df)))
-
-tbl_alpha <- bg(tbl_alpha, bg = "blue", part = "header")
-tbl_alpha <- color(tbl_alpha, color = "white", part = "header")
-
-bes <- align(tbl_alpha, align = "center")
-
-bes <- align_text_col(bes, align = "center")
-
-return(bes)
-
+  tbl_alpha <- autofit(theme_vanilla(flextable(df)))
+  tbl_alpha <- bg(tbl_alpha, bg = "blue", part = "header")
+  tbl_alpha <- color(tbl_alpha, color = "white", part = "header")
+  bes <- align(tbl_alpha, align = "center")
+  bes <- align_text_col(bes, align = "center")
+  return(bes)
 }
 
 ```
 
 
 ```{r}
-# When you are done writing, your bibliography file is likely to contain some unneeded references, which you added while writing but removed during revisions. tidy_bib_file() removes unneeded (or duplicate) entries from your bibliography file.
 
 SurveyData <-read.csv("es_data.csv")
 
-# ------------------------- primary data checks --------------------------------
-## complete cases Questions
-completeSurveyData=SurveyData[complete.cases(SurveyData[2:62]), ]
-
-## complete cases all
-completeSurveyData=SurveyData[complete.cases(SurveyData), ]
-
 gov_total <- read_csv("HamzaGovern.csv")
+
 # correction for some MRNs mistyped 
 
 fir <- str_extract(SurveyData$MRN, "\\d{4}")   
@@ -148,10 +129,8 @@ SurveyData$governorate[SurveyData$Governorate %in% c("Cairo", "Alexandria" , "Po
 
 SurveyData$governorate[SurveyData$Governorate %in% c("South Sinai", "Red Sea", "North Sinai", "Matrouh", "New Valley"  )]  <- "Frontier Governorates"
 
-
 SurveyData$governorate[SurveyData$Governorate %in% c("Outside Egypt")]  <- "Outside Egypt"
 
-#table(SurveyData$governorate)
 
 SurveyData$family_income_total = SurveyData$Father_month_salary + SurveyData$Mother_month_salary + SurveyData$other_income_val
 
@@ -191,22 +170,21 @@ SurveyData$father_edu_recoded =ifelse(
 
 
 
-library(psych)
 library(GPArotation)
 
 # get the mean for all questions (before questions removal)
 
 questions <- SurveyData[, 2:62]
 
-# ---------------------------  combining categorical variables ---------------------------------
+# ---------------------------  combining categorical variables------------------------------
 
 # I will combine levels of income category
 
 
 SurveyData$income_category_comb <- SurveyData$income_category
+
 SurveyData$income_category_comb[SurveyData$income_category_comb == "5_more than 25000"] <- "4_from 12000 to 25000"
 SurveyData$income_category_comb[SurveyData$income_category_comb == "4_from 12000 to 25000"] <- "4_more than 12000"
-
 
 # Now we are having only 4 categories, the smallest contains 22 subjects 
 
@@ -215,20 +193,14 @@ SurveyData$income_category_comb[SurveyData$income_category_comb == "4_from 12000
 SurveyData$father_edu_comb <- SurveyData$father_edu_recoded
 SurveyData$father_edu_comb[SurveyData$father_edu_comb == "Master & PHD"] <- "5_University Degree"
 
-
 SurveyData$father_edu_combined <- as.factor(SurveyData$father_edu_comb)
 
 levels(SurveyData$father_edu_combined) <- c("Illiterate", "R&W_prim", "R&W_prim", "prep/sec", "prep/sec", "University Degree & post-grad")
-
-
-total_mean <- data.frame(cbind(SurveyData[, 1], rowMeans(questions), SurveyData$father_edu_combined, SurveyData$income_category_comb, SurveyData$sex))
-colnames(total_mean) <- c("ID", "Mean_score", "father_education", "income_category", "sex")
 
 SurveyData$mo_edu <- SurveyData$Mother_education
 
 SurveyData$mo_edu <- car::recode(SurveyData$mo_edu, "'Illiterate' = 1; c('read n write', 'primary') = 2; 
   c('prep', 'secondary +') = 3; 'University Degree' = 4")
-
 
 SurveyData$fa_edu <- car::recode(SurveyData$father_edu_combined, "'Illiterate' = 1; 'R&W_prim' = 2; 'prep/sec' = 3; 'University Degree & post-grad' = 4")
 
@@ -240,7 +212,7 @@ levels(SurveyData$parent_education) <- c("Illiterate", "R&W-PRIM", "PREP-SEC", "
 
 ```
 
-Apart from few missing data in demographics (table 1), nothing was missing regarding the survey answers to all questions. We calculated total family income by summing up father monthly salary, mother monthly salary as well as other incomes gained from other resources. We tried to categorize income and father education into meaningful categories, with an attempt to avoid small number of participants in subgroups so as to have valid statistical comparisons.  
+Apart from few missing data in demographics (table 1), nothing was missing regarding the survey answers to all questions. We calculated total family income by summing up father monthly salary, mother monthly salary as well as other incomes gained from other resources. We tried to categorize income and parent education into meaningful categories, with an attempt to avoid small number of participants in subgroups. 
 
 ```{r}
 
@@ -249,10 +221,57 @@ SurveyData$parent <- SurveyData$author
 levels(SurveyData$parent) <- c("father", "mother", "mother")
 
 SurveyData$Number_of_family_members <-  cut(SurveyData$family_members, c(-1, 4, 6, 100), c("<=4", "5-6", ">=7"))
-  
-table1(~ sex +  governorate + parent + Number_of_family_members +  governorate + parent_education + income_category_comb , data=SurveyData,  topclass="Rtable1-zebra")
+
+SurveyData$parent_education <- SurveyData$parent_education %>% 
+  fct_recode("Literate - Primary education" = "R&W-PRIM") %>% 
+  fct_recode("Preparatory - Secondary edication" = "PREP-SEC")
+
+SurveyData$income_category_comb <- SurveyData$income_category_comb %>% 
+  fct_recode("<= 2000 EGP" = " 1_less than 2000") %>% 
+  fct_recode("2000-6000 EGP" = "2_from 2000 to 6000") %>% 
+  fct_recode("6000-12000 EGP" = "3_from 6000 to 12000") %>% 
+  fct_recode("> 12000 EGP" = "4_more than 12000")
+
+exp = c("sex", "parent", "parent_education", "Number_of_family_members", "income_category_comb", "governorate")
+
+SurveyData <- SurveyData %>% 
+  mutate_at(c("sex", "parent", "parent_education", "Number_of_family_members", "income_category_comb", "governorate"), as.factor)
+
+SurveyData %>% 
+  mutate(
+    sex = ff_label(sex, "Child gender"),
+    parent = ff_label(parent, "Relation to patient"),
+    parent_education = ff_label(parent_education, "Parent education"),
+    Number_of_family_members = ff_label(Number_of_family_members, "Number of family members"),
+    income_category_comb = ff_label(income_category_comb, "Income"),
+    governorate = ff_label(governorate, "Governorate")
+  ) %>% 
+  summary_factorlist(explanatory = exp, na_include = T, column = T,  p = F, label = T) -> desc_tab
+
+names(desc_tab)[1:3] <- c("Factor", "Levels", "Frequency (%)")
+
+rmdtbl(desc_tab)
 
 ```
+
+Table 1 Sociodemographic characteristics of participants. 
+
+
+```{r}
+tab2 <- SurveyData %>% 
+  group_by(parent, parent_education) %>% 
+  summarise(Percentage = round(n()/ nrow(SurveyData) * 100 , 2)) 
+
+names(tab2) <- c("Parent", "Parent education", "Percentage")
+
+rmdtbl(tab2)
+
+```
+Table 2 Educational level of survey respondents
+
+More than 65% of participants are mothers with at least secondary level education. 
+
+
 
 # proper questions 
 
@@ -288,19 +307,13 @@ ques48_4 <- questions %>%
 ques48_5 <- questions %>% 
   dplyr::select(-c(7, 12, 23, 30, 9, 47, 16, 49, 51, 11, 25, 40, 59))# removed 41 
 
-
-# ques45 <- questions %>% 
-#   dplyr::select(-c(6,9,12,18,53,3,47, 55,61,44,50, 16,17,49,51, 40))
-# 
-# ques44 <- questions %>% 
-#   dplyr::select(-c(6,9,10, 11,12,18,53,3,47, 55,44,50, 16,17,49,51, 40))
-
 # a new start with 2 domains only 
 
 #The reason is: a) low reliability in the third domain 
 #b) few questions in the third domain ( 9 or 10) 
 #c) change from 1 domain to 2 is dramatic, but change from three to four is equal to the change of a single question
 #d) result is obvious from the scree plot
+
 ```
 
 # MIRT
@@ -310,6 +323,7 @@ ques48_5 <- questions %>%
 ##### Dimentionality assessment
 
 Stout et al. (1996) suggested that D(P) ≤ 0.1 reflects that the data are essentially unidimensional while D(P) ≤ 1.0 indicates the presence of “sizable dimensionality” (p. 348). Roussos and Ozbek (2006) constructed a more precise yardstick for the DETECT index, with proposed hatch marks for essential unidimensionality/weak multidimensionality (D(P) ≤ 0.2), weak to moderate multidimensionality (0.2 < D(P) ≤ 0.4, moderate to large multidimensionality (0.4 < D(P) ≤ 1.0), and strong multidimensionality (D(P) > 1.0). 
+
 ```{r}
 expl.detect(ques43, score, 2)
 
